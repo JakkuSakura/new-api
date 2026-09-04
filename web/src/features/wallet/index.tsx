@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { QRCodeSVG } from 'qrcode.react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
 import { SectionPageLayout } from '@/components/layout'
@@ -49,6 +50,7 @@ import {
   getMinTopupAmount,
   dispatchSelectedPayment,
 } from './lib'
+import { getAirwallexPaymentStatus, isApiSuccess } from './api'
 import type {
   UserWalletData,
   PaymentMethod,
@@ -100,6 +102,8 @@ export function Wallet(props: WalletProps) {
     processPayment,
     qrCode: paymentQrCode,
     setQrCode: setPaymentQrCode,
+    paymentTradeNo,
+    setPaymentTradeNo,
   } = usePayment()
   const {
     affiliateLink,
@@ -139,6 +143,35 @@ export function Wallet(props: WalletProps) {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [props.initialShowHistory])
+
+  useEffect(() => {
+    if (!paymentQrCode || !paymentTradeNo) return
+    let stopped = false
+    const poll = async () => {
+      try {
+        const response = await getAirwallexPaymentStatus(paymentTradeNo)
+        if (stopped || !isApiSuccess(response) || !response.data) return
+        if (response.data.status === 'succeeded') {
+          setPaymentQrCode(null)
+          setPaymentTradeNo(null)
+          await fetchUser()
+          toast.success(t('Payment completed'))
+        } else if (response.data.status === 'failed') {
+          setPaymentQrCode(null)
+          setPaymentTradeNo(null)
+          toast.error(t('Payment failed'))
+        }
+      } catch {
+        // Transient polling failures are retried on the next interval.
+      }
+    }
+    void poll()
+    const timer = window.setInterval(() => void poll(), 3000)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+    }
+  }, [paymentQrCode, paymentTradeNo, fetchUser, setPaymentQrCode, setPaymentTradeNo, t])
 
   // Initialize topup amount when topup info is loaded
   const topupAmountInitializedRef = useRef(false)
@@ -370,11 +403,12 @@ export function Wallet(props: WalletProps) {
         usdExchangeRate={effectiveUsdExchangeRate}
       />
       {paymentQrCode && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4' onClick={() => setPaymentQrCode(null)}>
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4' onClick={() => { setPaymentQrCode(null); setPaymentTradeNo(null) }}>
           <div className='rounded-lg bg-background p-6 text-center shadow-lg' onClick={(event) => event.stopPropagation()}>
             <h2 className='mb-4 text-lg font-semibold'>{t('Scan the QR code to complete payment')}</h2>
             <QRCodeSVG value={paymentQrCode} size={240} />
-            <Button className='mt-4' onClick={() => setPaymentQrCode(null)}>{t('Close')}</Button>
+            <p className='mt-3 text-sm text-muted-foreground'>{t('Waiting for payment...')}</p>
+            <Button className='mt-4' onClick={() => { setPaymentQrCode(null); setPaymentTradeNo(null) }}>{t('Close')}</Button>
           </div>
         </div>
       )}

@@ -10,4 +10,11 @@ const keys = {
   ru: { Airwallex:'Airwallex', 'Airwallex Gateway':'Шлюз Airwallex', AirwallexClientID:'ID клиента', AirwallexAPIKey:'Ключ API', AirwallexWebhookSecret:'Секрет webhook', AirwallexCurrency:'Валюта', AirwallexUnitPrice:'Цена единицы', AirwallexMinTopUp:'Минимальное пополнение', 'Enable Airwallex':'Включить Airwallex', 'Use Airwallex sandbox':'Использовать песочницу Airwallex', 'Scan the QR code to complete payment':'Отсканируйте QR-код для оплаты', Close:'Закрыть' },
   vi: { Airwallex:'Airwallex', 'Airwallex Gateway':'Cổng Airwallex', AirwallexClientID:'ID khách hàng', AirwallexAPIKey:'Khóa API', AirwallexWebhookSecret:'Bí mật webhook', AirwallexCurrency:'Tiền tệ', AirwallexUnitPrice:'Giá đơn vị', AirwallexMinTopUp:'Nạp tối thiểu', 'Enable Airwallex':'Bật Airwallex', 'Use Airwallex sandbox':'Dùng sandbox Airwallex', 'Scan the QR code to complete payment':'Quét mã QR để hoàn tất thanh toán', Close:'Đóng' },
 }
+for (const locale of Object.keys(keys)) {
+  Object.assign(keys[locale], {
+    'Payment completed': locale === 'zh' ? '支付已完成' : locale === 'zh-TW' ? '付款已完成' : locale === 'fr' ? 'Paiement terminé' : locale === 'ja' ? '支払いが完了しました' : locale === 'ru' ? 'Платеж завершен' : locale === 'vi' ? 'Thanh toán hoàn tất' : 'Payment completed',
+    'Payment failed': locale === 'zh' ? '支付失败' : locale === 'zh-TW' ? '付款失敗' : locale === 'fr' ? 'Paiement échoué' : locale === 'ja' ? '支払いに失敗しました' : locale === 'ru' ? 'Платеж не выполнен' : locale === 'vi' ? 'Thanh toán thất bại' : 'Payment failed',
+    'Waiting for payment...': locale === 'zh' ? '等待支付...' : locale === 'zh-TW' ? '等待付款...' : locale === 'fr' ? 'En attente du paiement...' : locale === 'ja' ? '支払いを待っています...' : locale === 'ru' ? 'Ожидание платежа...' : locale === 'vi' ? 'Đang chờ thanh toán...' : 'Waiting for payment...',
+  })
+}
 for (const [locale, values] of Object.entries(keys)) { const file = path.join(dir, `${locale}.json`); const json = JSON.parse(await fs.readFile(file, 'utf8')); Object.assign(json.translation, values); json.translation = Object.fromEntries(Object.entries(json.translation).sort(([a],[b]) => a.localeCompare(b))); await fs.writeFile(file, JSON.stringify(json, null, 2) + '\n') }

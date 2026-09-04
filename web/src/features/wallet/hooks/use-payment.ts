@@ -91,6 +91,7 @@ export function usePayment() {
   const [calculating, setCalculating] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [qrCode, setQrCode] = useState<string | null>(null)
+  const [paymentTradeNo, setPaymentTradeNo] = useState<string | null>(null)
 
   // Calculate payment amount
   const calculatePaymentAmount = useCallback(
@@ -147,9 +148,10 @@ export function usePayment() {
           return true
         }
 
-        const responseData = response.data as { qr_code?: unknown } | undefined
+        const responseData = response.data as { qr_code?: unknown; trade_no?: unknown } | undefined
         if (isAirwallex && paymentType === 'airwallex_wechat' && responseData?.qr_code) {
           setQrCode(String(responseData.qr_code))
+          setPaymentTradeNo(responseData.trade_no ? String(responseData.trade_no) : null)
           toast.success(i18next.t('Scan the QR code to complete payment'))
           return true
         }
@@ -183,5 +185,7 @@ export function usePayment() {
     setAmount,
     qrCode,
     setQrCode,
+    paymentTradeNo,
+    setPaymentTradeNo,
   }
 }
