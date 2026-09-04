@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
@@ -160,9 +161,10 @@ func RequestAirwallexPay(c *gin.Context) {
 	if req.PaymentMethod == model.PaymentMethodAirwallex {
 		result, err = airwallexRequest("/api/v1/pa/payment_links", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "success_redirect_url": paymentReturnPath("/wallet"), "failure_redirect_url": paymentReturnPath("/wallet")})
 	} else {
-		result, err = airwallexRequest("/api/v1/pa/payment_intents", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "payment_method": map[string]any{"type": "wechatpay", "flow": "qr_code"}})
+		result, err = airwallexRequest("/api/v1/pa/payment_intents", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "payment_method": map[string]any{"type": "wechatpay", "wechatpay": map[string]any{"flow": "qrcode"}}})
 	}
 	if err != nil {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("Airwallex 创建支付失败 user_id=%d trade_no=%s payment_method=%s error=%q", id, tradeNo, req.PaymentMethod, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
 		return
 	}
@@ -176,16 +178,25 @@ func RequestAirwallexPay(c *gin.Context) {
 		if payLink == "" {
 			payLink, _ = result["payment_link_url"].(string)
 		}
-		if payLink == "" { c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Airwallex 未返回支付链接"}); return }
+		if payLink == "" {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Airwallex 未返回支付链接"})
+			return
+		}
 		data["pay_link"] = payLink
 	} else {
 		data["qr_code"] = result["qr_code"]
 		if data["qr_code"] == nil {
 			if next, ok := result["next_action"].(map[string]any); ok {
-				data["qr_code"] = next["qr_code"]
+				data["qr_code"] = next["qrcode"]
+				if data["qr_code"] == nil {
+					data["qr_code"] = next["qr_code"]
+				}
 			}
 		}
-		if data["qr_code"] == nil { c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Airwallex 未返回微信支付二维码"}); return }
+		if data["qr_code"] == nil {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Airwallex 未返回微信支付二维码"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
 }
