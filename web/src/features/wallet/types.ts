@@ -60,7 +60,7 @@ export type WaffoPancakePaymentResponse = ApiResponse<
   | string
 >
 export type AirwallexPaymentResponse = ApiResponse<{ pay_link?: string; qr_code?: string; trade_no?: string }>
-export type AirwallexPaymentStatusResponse = ApiResponse<{ status: 'pending' | 'succeeded' | 'failed' }>
+export type AirwallexPaymentStatusResponse = ApiResponse<{ status: 'pending' | 'succeeded' | 'failed'; poll_interval_seconds?: number }>
 
 /**
  * Creem product configuration

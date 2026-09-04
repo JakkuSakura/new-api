@@ -244,8 +244,15 @@ func GetAirwallexPaymentStatus(c *gin.Context) {
 		return
 	}
 	if topUp.Status == common.TopUpStatusSuccess {
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": "succeeded"}})
+		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": "succeeded", "poll_interval_seconds": 0}})
 		return
+	}
+	age := time.Now().Unix() - topUp.CreateTime
+	pollInterval := int64(0)
+	if age <= 10*60 {
+		pollInterval = 3
+	} else if age <= 60*60 {
+		pollInterval = 60
 	}
 	result, err := airwallexGet("/api/v1/pa/payment_intents", url.Values{"merchant_order_id": []string{tradeNo}})
 	if err != nil {
@@ -272,7 +279,7 @@ func GetAirwallexPaymentStatus(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": status}})
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": status, "poll_interval_seconds": pollInterval}})
 }
 
 func airwallexPaymentStatus(value any) string {

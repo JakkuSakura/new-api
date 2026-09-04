@@ -147,10 +147,15 @@ export function Wallet(props: WalletProps) {
   useEffect(() => {
     if (!paymentQrCode || !paymentTradeNo) return
     let stopped = false
+    let timer: number | undefined
     const poll = async () => {
       try {
         const response = await getAirwallexPaymentStatus(paymentTradeNo)
-        if (stopped || !isApiSuccess(response) || !response.data) return
+        if (stopped) return
+        if (!isApiSuccess(response) || !response.data) {
+          timer = window.setTimeout(() => void poll(), 60_000)
+          return
+        }
         if (response.data.status === 'succeeded') {
           setPaymentQrCode(null)
           setPaymentTradeNo(null)
@@ -160,16 +165,17 @@ export function Wallet(props: WalletProps) {
           setPaymentQrCode(null)
           setPaymentTradeNo(null)
           toast.error(t('Payment failed'))
+        } else if (response.data.poll_interval_seconds) {
+          timer = window.setTimeout(() => void poll(), response.data.poll_interval_seconds * 1000)
         }
       } catch {
-        // Transient polling failures are retried on the next interval.
+        if (!stopped) timer = window.setTimeout(() => void poll(), 60_000)
       }
     }
     void poll()
-    const timer = window.setInterval(() => void poll(), 3000)
     return () => {
       stopped = true
-      window.clearInterval(timer)
+      if (timer !== undefined) window.clearTimeout(timer)
     }
   }, [paymentQrCode, paymentTradeNo, fetchUser, setPaymentQrCode, setPaymentTradeNo, t])
 
