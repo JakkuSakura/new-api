@@ -31,7 +31,7 @@ var airwallex = &airwallexClient{}
 
 func airwallexBaseURL() string {
 	if setting.AirwallexSandbox {
-		return "https://api-demo.airwallex.com"
+		return "https://api.sandbox.airwallex.com"
 	}
 	return "https://api.airwallex.com"
 }
@@ -159,9 +159,9 @@ func RequestAirwallexPay(c *gin.Context) {
 	}
 	var result map[string]any
 	if req.PaymentMethod == model.PaymentMethodAirwallex {
-		result, err = airwallexRequest("/api/v1/pa/payment_links", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "success_redirect_url": paymentReturnPath("/wallet"), "failure_redirect_url": paymentReturnPath("/wallet")})
+		result, err = airwallexRequest("/api/v1/pa/payment_links/create", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "success_redirect_url": paymentReturnPath("/wallet"), "failure_redirect_url": paymentReturnPath("/wallet")})
 	} else {
-		result, err = airwallexRequest("/api/v1/pa/payment_intents", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "payment_method": map[string]any{"type": "wechatpay", "wechatpay": map[string]any{"flow": "qrcode"}}})
+		result, err = airwallexRequest("/api/v1/pa/payment_intents/create", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "payment_method": map[string]any{"type": "wechatpay", "wechatpay": map[string]any{"flow": "qrcode"}}})
 	}
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Airwallex 创建支付失败 user_id=%d trade_no=%s payment_method=%s error=%q", id, tradeNo, req.PaymentMethod, err.Error()))
