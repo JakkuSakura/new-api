@@ -52,6 +52,12 @@ func GetTopUpInfo(c *gin.Context) {
 			payMethods = append(payMethods, stripeMethod)
 		}
 	}
+	if airwallexEnabled() {
+		payMethods = append(payMethods,
+			map[string]string{"name": "Airwallex", "type": model.PaymentMethodAirwallex, "color": "#1E40AF", "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
+			map[string]string{"name": "Airwallex WeChat Pay", "type": model.PaymentMethodAirwallexWeChat, "color": "#07C160", "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
+		)
+	}
 
 	// Waffo Pancake is displayed above the standard Waffo gateway.
 	enableWaffoPancake := isWaffoPancakeTopUpEnabled()
@@ -99,6 +105,9 @@ func GetTopUpInfo(c *gin.Context) {
 	data := gin.H{
 		"enable_online_topup":              isEpayTopUpEnabled(),
 		"enable_stripe_topup":              isStripeTopUpEnabled(),
+		"enable_airwallex_topup":           airwallexEnabled(),
+		"airwallex_min_topup":              setting.AirwallexMinTopUp,
+		"airwallex_currency":               setting.AirwallexCurrency,
 		"enable_creem_topup":               isCreemTopUpEnabled(),
 		"enable_waffo_topup":               enableWaffo,
 		"enable_waffo_pancake_topup":       enableWaffoPancake,

@@ -126,6 +126,14 @@ func InitOptionMap() {
 	common.OptionMap["WaffoPancakeMinTopUp"] = strconv.Itoa(setting.WaffoPancakeMinTopUp)
 	common.OptionMap["WaffoPancakeStoreID"] = setting.WaffoPancakeStoreID
 	common.OptionMap["WaffoPancakeProductID"] = setting.WaffoPancakeProductID
+	common.OptionMap["AirwallexEnabled"] = strconv.FormatBool(setting.AirwallexEnabled)
+	common.OptionMap["AirwallexClientID"] = setting.AirwallexClientID
+	common.OptionMap["AirwallexAPIKey"] = setting.AirwallexAPIKey
+	common.OptionMap["AirwallexWebhookSecret"] = setting.AirwallexWebhookSecret
+	common.OptionMap["AirwallexSandbox"] = strconv.FormatBool(setting.AirwallexSandbox)
+	common.OptionMap["AirwallexCurrency"] = setting.AirwallexCurrency
+	common.OptionMap["AirwallexUnitPrice"] = strconv.FormatFloat(setting.AirwallexUnitPrice, 'f', -1, 64)
+	common.OptionMap["AirwallexMinTopUp"] = strconv.Itoa(setting.AirwallexMinTopUp)
 	common.OptionMap["TopupGroupRatio"] = common.TopupGroupRatio2JSONString()
 	common.OptionMap["Chats"] = setting.Chats2JsonString()
 	common.OptionMap["AutoGroups"] = setting.AutoGroups2JsonString()
@@ -507,6 +515,22 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.WaffoMinTopUp, _ = strconv.Atoi(value)
 	case "WaffoPancakeMerchantID":
 		setting.WaffoPancakeMerchantID = value
+	case "AirwallexEnabled":
+		setting.AirwallexEnabled = value == "true"
+	case "AirwallexClientID":
+		setting.AirwallexClientID = value
+	case "AirwallexAPIKey":
+		setting.AirwallexAPIKey = value
+	case "AirwallexWebhookSecret":
+		setting.AirwallexWebhookSecret = value
+	case "AirwallexSandbox":
+		setting.AirwallexSandbox = value == "true"
+	case "AirwallexCurrency":
+		setting.AirwallexCurrency = value
+	case "AirwallexUnitPrice":
+		setting.AirwallexUnitPrice, _ = strconv.ParseFloat(value, 64)
+	case "AirwallexMinTopUp":
+		setting.AirwallexMinTopUp, _ = strconv.Atoi(value)
 	case "WaffoPancakePrivateKey":
 		setting.WaffoPancakePrivateKey = value
 	case "WaffoPancakeReturnURL":

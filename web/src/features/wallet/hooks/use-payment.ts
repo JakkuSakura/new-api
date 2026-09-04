@@ -25,14 +25,17 @@ import {
   calculateStripeAmount,
   calculateWaffoAmount,
   calculateWaffoPancakeAmount,
+  calculateAirwallexAmount,
   requestPayment,
   requestStripePayment,
+  requestAirwallexPayment,
   isApiSuccess,
 } from '../api'
 import {
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
+  isAirwallexPayment,
   submitPaymentForm,
 } from '../lib'
 import type { AmountRequest, AmountResponse } from '../types'
@@ -48,6 +51,7 @@ export interface PaymentAmountCalculators {
   stripe: AmountCalculator
   waffo: AmountCalculator
   waffoPancake: AmountCalculator
+  airwallex?: AmountCalculator
 }
 
 const defaultPaymentAmountCalculators: PaymentAmountCalculators = {
@@ -55,6 +59,7 @@ const defaultPaymentAmountCalculators: PaymentAmountCalculators = {
   stripe: calculateStripeAmount,
   waffo: calculateWaffoAmount,
   waffoPancake: calculateWaffoPancakeAmount,
+  airwallex: calculateAirwallexAmount,
 }
 
 export async function requestPaymentAmount(
@@ -69,6 +74,8 @@ export async function requestPaymentAmount(
     calculator = calculators.waffo
   } else if (isWaffoPancakePayment(paymentType)) {
     calculator = calculators.waffoPancake
+  } else if (isAirwallexPayment(paymentType)) {
+    calculator = calculators.airwallex || calculators.regular
   }
 
   const response = await calculator({ amount: topupAmount })
@@ -83,6 +90,7 @@ export function usePayment() {
   const [amount, setAmount] = useState<number>(0)
   const [calculating, setCalculating] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [qrCode, setQrCode] = useState<string | null>(null)
 
   // Calculate payment amount
   const calculatePaymentAmount = useCallback(
@@ -112,6 +120,7 @@ export function usePayment() {
         setProcessing(true)
 
         const isStripe = isStripePayment(paymentType)
+        const isAirwallex = isAirwallexPayment(paymentType)
         const amount = Math.floor(topupAmount)
 
         const response = isStripe
@@ -119,7 +128,9 @@ export function usePayment() {
               amount,
               payment_method: 'stripe',
             })
-          : await requestPayment({
+          : isAirwallex
+            ? await requestAirwallexPayment({ amount, payment_method: paymentType })
+            : await requestPayment({
               amount,
               payment_method: paymentType,
             })
@@ -136,8 +147,14 @@ export function usePayment() {
           return true
         }
 
+        const responseData = response.data as { qr_code?: unknown } | undefined
+        if (isAirwallex && paymentType === 'airwallex_wechat' && responseData?.qr_code) {
+          setQrCode(String(responseData.qr_code))
+          toast.success(i18next.t('Scan the QR code to complete payment'))
+          return true
+        }
         // Handle non-Stripe payment
-        if (!isStripe && response.data) {
+        if (!isStripe && !isAirwallex && response.data) {
           const url = (response as unknown as { url?: string }).url
           if (url) {
             submitPaymentForm(url, response.data)
@@ -164,5 +181,7 @@ export function usePayment() {
     calculatePaymentAmount,
     processPayment,
     setAmount,
+    qrCode,
+    setQrCode,
   }
 }

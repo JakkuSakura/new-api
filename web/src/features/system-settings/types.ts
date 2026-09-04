@@ -306,6 +306,14 @@ export type BillingSettings = {
   StripeUnitPrice: number
   StripeMinTopUp: number
   StripePromotionCodesEnabled: boolean
+  AirwallexEnabled: boolean
+  AirwallexClientID: string
+  AirwallexAPIKey: string
+  AirwallexWebhookSecret: string
+  AirwallexSandbox: boolean
+  AirwallexCurrency: string
+  AirwallexUnitPrice: number
+  AirwallexMinTopUp: number
   CreemApiKey: string
   CreemWebhookSecret: string
   CreemTestMode: boolean

@@ -18,6 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { QRCodeSVG } from 'qrcode.react'
+import { Button } from '@/components/ui/button'
 
 import { SectionPageLayout } from '@/components/layout'
 import { useStatus } from '@/hooks/use-status'
@@ -96,6 +98,8 @@ export function Wallet(props: WalletProps) {
     processing,
     calculatePaymentAmount,
     processPayment,
+    qrCode: paymentQrCode,
+    setQrCode: setPaymentQrCode,
   } = usePayment()
   const {
     affiliateLink,
@@ -328,6 +332,7 @@ export function Wallet(props: WalletProps) {
                   enableWaffoPancakeTopup={
                     topupInfo?.enable_waffo_pancake_topup
                   }
+                  enableAirwallexTopup={topupInfo?.enable_airwallex_topup}
                 />
               </div>
 
@@ -364,6 +369,15 @@ export function Wallet(props: WalletProps) {
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
       />
+      {paymentQrCode && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4' onClick={() => setPaymentQrCode(null)}>
+          <div className='rounded-lg bg-background p-6 text-center shadow-lg' onClick={(event) => event.stopPropagation()}>
+            <h2 className='mb-4 text-lg font-semibold'>{t('Scan the QR code to complete payment')}</h2>
+            <QRCodeSVG value={paymentQrCode} size={240} />
+            <Button className='mt-4' onClick={() => setPaymentQrCode(null)}>{t('Close')}</Button>
+          </div>
+        </div>
+      )}
 
       <TransferDialog
         open={transferDialogOpen}

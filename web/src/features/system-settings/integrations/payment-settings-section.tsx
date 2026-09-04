@@ -147,6 +147,14 @@ const paymentSchema = z.object({
   StripeUnitPrice: z.coerce.number().min(0),
   StripeMinTopUp: z.coerce.number().min(0),
   StripePromotionCodesEnabled: z.boolean(),
+  AirwallexEnabled: z.boolean(),
+  AirwallexClientID: z.string(),
+  AirwallexAPIKey: z.string(),
+  AirwallexWebhookSecret: z.string(),
+  AirwallexSandbox: z.boolean(),
+  AirwallexCurrency: z.string(),
+  AirwallexUnitPrice: z.coerce.number().min(0),
+  AirwallexMinTopUp: z.coerce.number().min(1),
   CreemApiKey: z.string(),
   CreemWebhookSecret: z.string(),
   CreemTestMode: z.boolean(),
@@ -433,6 +441,14 @@ export function PaymentSettingsSection({
       StripeUnitPrice: values.StripeUnitPrice,
       StripeMinTopUp: values.StripeMinTopUp,
       StripePromotionCodesEnabled: values.StripePromotionCodesEnabled,
+      AirwallexEnabled: values.AirwallexEnabled,
+      AirwallexClientID: values.AirwallexClientID.trim(),
+      AirwallexAPIKey: values.AirwallexAPIKey.trim(),
+      AirwallexWebhookSecret: values.AirwallexWebhookSecret.trim(),
+      AirwallexSandbox: values.AirwallexSandbox,
+      AirwallexCurrency: values.AirwallexCurrency.trim() || 'USD',
+      AirwallexUnitPrice: values.AirwallexUnitPrice,
+      AirwallexMinTopUp: values.AirwallexMinTopUp,
       CreemApiKey: values.CreemApiKey.trim(),
       CreemWebhookSecret: values.CreemWebhookSecret.trim(),
       CreemTestMode: values.CreemTestMode,
@@ -478,6 +494,14 @@ export function PaymentSettingsSection({
       StripeMinTopUp: initialRef.current.StripeMinTopUp,
       StripePromotionCodesEnabled:
         initialRef.current.StripePromotionCodesEnabled,
+      AirwallexEnabled: initialRef.current.AirwallexEnabled,
+      AirwallexClientID: initialRef.current.AirwallexClientID.trim(),
+      AirwallexAPIKey: initialRef.current.AirwallexAPIKey.trim(),
+      AirwallexWebhookSecret: initialRef.current.AirwallexWebhookSecret.trim(),
+      AirwallexSandbox: initialRef.current.AirwallexSandbox,
+      AirwallexCurrency: initialRef.current.AirwallexCurrency.trim() || 'USD',
+      AirwallexUnitPrice: initialRef.current.AirwallexUnitPrice,
+      AirwallexMinTopUp: initialRef.current.AirwallexMinTopUp,
       CreemApiKey: initialRef.current.CreemApiKey.trim(),
       CreemWebhookSecret: initialRef.current.CreemWebhookSecret.trim(),
       CreemTestMode: initialRef.current.CreemTestMode,
@@ -599,6 +623,15 @@ export function PaymentSettingsSection({
         key: 'StripePromotionCodesEnabled',
         value: sanitized.StripePromotionCodesEnabled,
       })
+    }
+
+    const sanitizedValues = sanitized as Record<string, string | number | boolean>
+    const initialValues = initial as Record<string, string | number | boolean>
+    for (const key of ['AirwallexClientID', 'AirwallexAPIKey', 'AirwallexWebhookSecret']) {
+      if (sanitizedValues[key] && sanitizedValues[key] !== initialValues[key]) updates.push({ key, value: sanitizedValues[key] })
+    }
+    for (const key of ['AirwallexEnabled', 'AirwallexSandbox', 'AirwallexCurrency', 'AirwallexUnitPrice', 'AirwallexMinTopUp']) {
+      if (sanitizedValues[key] !== initialValues[key]) updates.push({ key, value: sanitizedValues[key] })
     }
 
     if (
@@ -877,10 +910,11 @@ export function PaymentSettingsSection({
           />
           <Tabs defaultValue='general' className='min-w-0'>
             <div className='overflow-x-auto pb-1'>
-              <TabsList className='grid min-w-[44rem] grid-cols-6'>
+              <TabsList className='grid min-w-[52rem] grid-cols-7'>
                 <TabsTrigger value='general'>{t('General')}</TabsTrigger>
                 <TabsTrigger value='epay'>Epay</TabsTrigger>
                 <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
+                <TabsTrigger value='airwallex'>{t('Airwallex')}</TabsTrigger>
                 <TabsTrigger value='creem'>Creem</TabsTrigger>
                 <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
                 <TabsTrigger value='waffo'>Waffo</TabsTrigger>
@@ -1131,6 +1165,23 @@ export function PaymentSettingsSection({
                     )}
                   />
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value='airwallex' className={paymentTabContentClassName}>
+              <div className='space-y-4'>
+                <h3 className='text-lg font-medium'>{t('Airwallex Gateway')}</h3>
+                <div className='grid gap-4 md:grid-cols-2'>
+                  {(['AirwallexClientID', 'AirwallexAPIKey', 'AirwallexWebhookSecret', 'AirwallexCurrency'] as const).map((name) => (
+                    <FormField key={name} control={form.control} name={name} render={({ field }) => (
+                      <FormItem><FormLabel>{t(name)}</FormLabel><FormControl><Input {...field} type={name.includes('Key') || name.includes('Secret') ? 'password' : 'text'} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                  ))}
+                  <FormField control={form.control} name='AirwallexUnitPrice' render={({ field }) => <FormItem><FormLabel>{t('AirwallexUnitPrice')}</FormLabel><FormControl><Input type='number' {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField control={form.control} name='AirwallexMinTopUp' render={({ field }) => <FormItem><FormLabel>{t('AirwallexMinTopUp')}</FormLabel><FormControl><Input type='number' {...field} /></FormControl><FormMessage /></FormItem>} />
+                </div>
+                <FormField control={form.control} name='AirwallexEnabled' render={({ field }) => <FormItem className='flex items-center justify-between rounded-lg border p-4'><FormLabel>{t('Enable Airwallex')}</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>} />
+                <FormField control={form.control} name='AirwallexSandbox' render={({ field }) => <FormItem className='flex items-center justify-between rounded-lg border p-4'><FormLabel>{t('Use Airwallex sandbox')}</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>} />
               </div>
             </TabsContent>
 

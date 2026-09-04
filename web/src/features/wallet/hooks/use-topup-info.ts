@@ -182,6 +182,8 @@ export function useTopupInfo() {
 
       const processedData: TopupInfo = {
         ...response.data,
+        enable_airwallex_topup: !!response.data.enable_airwallex_topup,
+        airwallex_min_topup: Number(response.data.airwallex_min_topup) || 1,
         pay_methods: parsePaymentMethods(
           response.data.pay_methods,
           response.data.stripe_min_topup
