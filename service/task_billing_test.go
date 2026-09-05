@@ -52,6 +52,7 @@ func TestMain(m *testing.M) {
 		&model.Channel{},
 		&model.Midjourney{},
 		&model.TopUp{},
+		&model.FXRateSnapshot{},
 		&model.UserSubscription{},
 		&model.SystemTask{},
 		&model.SystemTaskLock{},
