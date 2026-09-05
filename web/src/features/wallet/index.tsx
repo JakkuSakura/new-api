@@ -16,16 +16,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Loader2, ShieldCheck } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 
 import { SectionPageLayout } from '@/components/layout'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStatus } from '@/hooks/use-status'
 import { getSelf } from '@/lib/api'
 
+import { getAirwallexPaymentStatus, isApiSuccess } from './api'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
@@ -49,7 +61,6 @@ import {
   getMinTopupAmount,
   dispatchSelectedPayment,
 } from './lib'
-import { getAirwallexPaymentStatus, isApiSuccess } from './api'
 import type {
   UserWalletData,
   PaymentMethod,
@@ -82,6 +93,9 @@ export function Wallet(props: WalletProps) {
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
+  const [paymentStatus, setPaymentStatus] = useState<
+    'pending' | 'succeeded' | 'failed'
+  >('pending')
 
   const { status } = useStatus()
   const { topupInfo, presetAmounts, loading: topupLoading } = useTopupInfo()
@@ -138,6 +152,7 @@ export function Wallet(props: WalletProps) {
 
   useEffect(() => {
     if (!paymentQrCode || !paymentTradeNo) return
+    setPaymentStatus('pending')
     let stopped = false
     let timer: number | undefined
     const poll = async () => {
@@ -149,16 +164,21 @@ export function Wallet(props: WalletProps) {
           return
         }
         if (response.data.status === 'succeeded') {
+          setPaymentStatus('succeeded')
           setPaymentQrCode(null)
           setPaymentTradeNo(null)
           await fetchUser()
           toast.success(t('Payment completed'))
         } else if (response.data.status === 'failed') {
+          setPaymentStatus('failed')
           setPaymentQrCode(null)
           setPaymentTradeNo(null)
           toast.error(t('Payment failed'))
         } else if (response.data.poll_interval_seconds) {
-          timer = window.setTimeout(() => void poll(), response.data.poll_interval_seconds * 1000)
+          timer = window.setTimeout(
+            () => void poll(),
+            response.data.poll_interval_seconds * 1000
+          )
         }
       } catch {
         if (!stopped) timer = window.setTimeout(() => void poll(), 60_000)
@@ -169,7 +189,14 @@ export function Wallet(props: WalletProps) {
       stopped = true
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [paymentQrCode, paymentTradeNo, fetchUser, setPaymentQrCode, setPaymentTradeNo, t])
+  }, [
+    paymentQrCode,
+    paymentTradeNo,
+    fetchUser,
+    setPaymentQrCode,
+    setPaymentTradeNo,
+    t,
+  ])
 
   // Initialize topup amount when topup info is loaded
   const topupAmountInitializedRef = useRef(false)
@@ -317,74 +344,163 @@ export function Wallet(props: WalletProps) {
     []
   )
 
+  let paymentStatusLabel = t('Payment failed')
+  if (paymentStatus === 'pending') {
+    paymentStatusLabel = t('Waiting for payment...')
+  }
+  if (paymentStatus === 'succeeded') {
+    paymentStatusLabel = t('Payment completed')
+  }
+
   return (
     <>
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('Wallet')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
-            <WalletStatsCard user={user} loading={userLoading} />
-
-            <div
-              className={
-                showSubscriptionPanel
-                  ? 'grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] xl:items-start'
-                  : 'grid gap-4'
+            <WalletStatsCard
+              user={user}
+              loading={userLoading}
+              onAddFunds={() =>
+                document
+                  .querySelector('#wallet-add-funds')
+                  ?.scrollIntoView({ behavior: 'smooth' })
               }
-            >
-              <div id='wallet-add-funds' className='scroll-mt-4'>
-                <RechargeFormCard
-                  topupInfo={topupInfo}
-                  presetAmounts={presetAmounts}
-                  selectedPreset={selectedPreset}
-                  onSelectPreset={handleSelectPreset}
-                  topupAmount={topupAmount}
-                  onTopupAmountChange={handleTopupAmountChange}
-                  paymentAmount={paymentAmount}
-                  calculating={calculating}
-                  onPaymentMethodSelect={handlePaymentMethodSelect}
-                  selectedPaymentMethod={selectedPaymentMethod}
-                  creditCurrency={topupInfo?.credit_currency}
-                  paymentLoading={paymentLoading}
-                  redemptionCode={redemptionCode}
-                  onRedemptionCodeChange={setRedemptionCode}
-                  onRedeem={handleRedeem}
-                  redeeming={redeeming}
-                  topupLink={topupInfo?.topup_link}
-                  loading={topupLoading}
-                  priceRatio={(status?.price as number) || 1}
-                  onOpenBilling={() => setBillingDialogOpen(true)}
-                  creemProducts={topupInfo?.creem_products}
-                  enableCreemTopup={topupInfo?.enable_creem_topup}
-                  onCreemProductSelect={handleCreemProductSelect}
-                  enableWaffoTopup={topupInfo?.enable_waffo_topup}
-                  waffoPayMethods={topupInfo?.waffo_pay_methods}
-                  waffoMinTopup={topupInfo?.waffo_min_topup}
-                  onWaffoMethodSelect={handleWaffoMethodSelect}
-                  enableWaffoPancakeTopup={
-                    topupInfo?.enable_waffo_pancake_topup
-                  }
-                  enableAirwallexTopup={topupInfo?.enable_airwallex_topup}
-                />
-              </div>
+            />
 
-              <SubscriptionPlansCard
+            <div id='wallet-add-funds' className='scroll-mt-4'>
+              <RechargeFormCard
                 topupInfo={topupInfo}
-                onAvailabilityChange={handleSubscriptionAvailabilityChange}
-                userQuota={user?.quota}
-                onPurchaseSuccess={fetchUser}
+                presetAmounts={presetAmounts}
+                selectedPreset={selectedPreset}
+                onSelectPreset={handleSelectPreset}
+                topupAmount={topupAmount}
+                onTopupAmountChange={handleTopupAmountChange}
+                paymentAmount={paymentAmount}
+                calculating={calculating}
+                onPaymentMethodSelect={handlePaymentMethodSelect}
+                selectedPaymentMethod={selectedPaymentMethod}
+                creditCurrency={topupInfo?.credit_currency}
+                paymentLoading={paymentLoading}
+                redemptionCode={redemptionCode}
+                onRedemptionCodeChange={setRedemptionCode}
+                onRedeem={handleRedeem}
+                redeeming={redeeming}
+                topupLink={topupInfo?.topup_link}
+                loading={topupLoading}
+                priceRatio={(status?.price as number) || 1}
+                onOpenBilling={() => setBillingDialogOpen(true)}
+                creemProducts={topupInfo?.creem_products}
+                enableCreemTopup={topupInfo?.enable_creem_topup}
+                onCreemProductSelect={handleCreemProductSelect}
+                enableWaffoTopup={topupInfo?.enable_waffo_topup}
+                waffoPayMethods={topupInfo?.waffo_pay_methods}
+                waffoMinTopup={topupInfo?.waffo_min_topup}
+                onWaffoMethodSelect={handleWaffoMethodSelect}
+                enableWaffoPancakeTopup={topupInfo?.enable_waffo_pancake_topup}
+                enableAirwallexTopup={topupInfo?.enable_airwallex_topup}
+                showRedemption={false}
               />
             </div>
 
-            <AffiliateRewardsCard
-              user={user}
-              affiliateLink={affiliateLink}
-              onTransfer={() => setTransferDialogOpen(true)}
-              complianceConfirmed={
-                topupInfo?.payment_compliance_confirmed !== false
-              }
-              loading={affiliateLoading}
-            />
+            <Tabs defaultValue='subscriptions' className='w-full'>
+              <TabsList className='w-full justify-start overflow-x-auto sm:w-fit'>
+                {showSubscriptionPanel && (
+                  <TabsTrigger value='subscriptions'>
+                    {t('Subscriptions')}
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value='affiliate'>
+                  {t('Affiliate Rewards')}
+                </TabsTrigger>
+                <TabsTrigger value='account'>{t('Account Tools')}</TabsTrigger>
+              </TabsList>
+              {showSubscriptionPanel && (
+                <TabsContent value='subscriptions' className='mt-4'>
+                  <SubscriptionPlansCard
+                    topupInfo={topupInfo}
+                    onAvailabilityChange={handleSubscriptionAvailabilityChange}
+                    userQuota={user?.quota}
+                    onPurchaseSuccess={fetchUser}
+                  />
+                </TabsContent>
+              )}
+              <TabsContent value='affiliate' className='mt-4'>
+                <AffiliateRewardsCard
+                  user={user}
+                  affiliateLink={affiliateLink}
+                  onTransfer={() => setTransferDialogOpen(true)}
+                  complianceConfirmed={
+                    topupInfo?.payment_compliance_confirmed !== false
+                  }
+                  loading={affiliateLoading}
+                />
+              </TabsContent>
+              <TabsContent value='account' className='mt-4'>
+                <div className='grid gap-4 md:grid-cols-2'>
+                  <div className='bg-card rounded-xl border p-5'>
+                    <div className='flex items-center gap-2'>
+                      <ShieldCheck className='text-primary size-5' />
+                      <h3 className='font-semibold'>{t('Redeem a code')}</h3>
+                    </div>
+                    <p className='text-muted-foreground mt-1 text-sm'>
+                      {t('Apply a redemption code to your account balance.')}
+                    </p>
+                    {topupInfo?.enable_redemption !== false ? (
+                      <div className='mt-4 flex gap-2'>
+                        <Label htmlFor='wallet-redemption' className='sr-only'>
+                          {t('Redemption code')}
+                        </Label>
+                        <Input
+                          id='wallet-redemption'
+                          value={redemptionCode}
+                          onChange={(e) => setRedemptionCode(e.target.value)}
+                          placeholder={t('Enter your redemption code')}
+                        />
+                        <Button
+                          variant='outline'
+                          onClick={handleRedeem}
+                          disabled={redeeming}
+                        >
+                          {redeeming ? t('Redeeming...') : t('Redeem')}
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className='text-muted-foreground mt-4 text-sm'>
+                        {t('Redemption codes are currently unavailable.')}
+                      </p>
+                    )}
+                    {topupInfo?.topup_link && (
+                      <a
+                        className='mt-3 inline-block text-sm underline underline-offset-4'
+                        href={topupInfo.topup_link}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                      >
+                        {t('Get a redemption code')}
+                      </a>
+                    )}
+                  </div>
+                  <div className='bg-card flex flex-col justify-between rounded-xl border p-5'>
+                    <div>
+                      <h3 className='font-semibold'>{t('Billing history')}</h3>
+                      <p className='text-muted-foreground mt-1 text-sm'>
+                        {t(
+                          'Review your previous payments and account transfers.'
+                        )}
+                      </p>
+                    </div>
+                    <Button
+                      variant='outline'
+                      className='mt-5 w-full sm:w-fit'
+                      onClick={() => setBillingDialogOpen(true)}
+                    >
+                      {t('Open billing history')}
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>
@@ -400,18 +516,58 @@ export function Wallet(props: WalletProps) {
         processing={processing || waffoProcessing || pancakeProcessing}
         discountRate={getDiscountRate()}
         creditCurrency={topupInfo?.credit_currency}
-        paymentCurrency={selectedPaymentMethod?.currency || topupInfo?.credit_currency}
+        paymentCurrency={
+          selectedPaymentMethod?.currency || topupInfo?.credit_currency
+        }
       />
-      {paymentQrCode && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4' onClick={() => { setPaymentQrCode(null); setPaymentTradeNo(null) }}>
-          <div className='rounded-lg bg-background p-6 text-center shadow-lg' onClick={(event) => event.stopPropagation()}>
-            <h2 className='mb-4 text-lg font-semibold'>{t('Scan the QR code to complete payment')}</h2>
-            <QRCodeSVG value={paymentQrCode} size={240} />
-            <p className='mt-3 text-sm text-muted-foreground'>{t('Waiting for payment...')}</p>
-            <Button className='mt-4' onClick={() => { setPaymentQrCode(null); setPaymentTradeNo(null) }}>{t('Close')}</Button>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={Boolean(paymentQrCode)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPaymentQrCode(null)
+            setPaymentTradeNo(null)
+          }
+        }}
+      >
+        <DialogContent className='max-w-sm text-center'>
+          <DialogHeader>
+            <DialogTitle>{t('Scan to pay')}</DialogTitle>
+            <DialogDescription>
+              {t('Your payment status updates automatically.')}
+            </DialogDescription>
+          </DialogHeader>
+          {paymentQrCode && (
+            <div className='flex flex-col items-center gap-4 py-2'>
+              <div className='rounded-2xl border bg-white p-4 shadow-sm'>
+                <QRCodeSVG
+                  value={paymentQrCode}
+                  size={220}
+                  aria-label={t('Payment QR code')}
+                />
+              </div>
+              <div
+                className='text-muted-foreground flex items-center gap-2 text-sm'
+                role='status'
+                aria-live='polite'
+              >
+                {paymentStatus === 'pending' && (
+                  <Loader2 className='size-4 animate-spin' />
+                )}
+                {paymentStatusLabel}
+              </div>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setPaymentQrCode(null)
+                  setPaymentTradeNo(null)
+                }}
+              >
+                {t('Close')}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <TransferDialog
         open={transferDialogOpen}

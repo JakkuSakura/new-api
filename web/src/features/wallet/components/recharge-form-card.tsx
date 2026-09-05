@@ -83,6 +83,7 @@ interface RechargeFormCardProps {
   enableWaffoPancakeTopup?: boolean
   enableAirwallexTopup?: boolean
   creditCurrency?: string
+  showRedemption?: boolean
 }
 
 export function RechargeFormCard({
@@ -115,6 +116,7 @@ export function RechargeFormCard({
   enableWaffoPancakeTopup,
   enableAirwallexTopup,
   creditCurrency = 'USD',
+  showRedemption = true,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
@@ -223,7 +225,7 @@ export function RechargeFormCard({
     >
       {/* Online Topup Section */}
       {hasAnyTopup ? (
-        <div className='space-y-4 sm:space-y-6'>
+        <div className='grid gap-4 sm:gap-6 lg:grid-cols-2'>
           {hasConfigurableTopup && (
             <>
               {presetAmounts.length > 0 && (
@@ -270,7 +272,8 @@ export function RechargeFormCard({
                             )}
                           </div>
                           <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            Pay {formatCurrency(actualPrice)} {selectedPaymentMethod?.currency || creditCurrency}
+                            Pay {formatCurrency(actualPrice)}{' '}
+                            {selectedPaymentMethod?.currency || creditCurrency}
                             {hasDiscount && savedAmount > 0 && (
                               <span className='text-green-600'>
                                 {' '}
@@ -310,7 +313,8 @@ export function RechargeFormCard({
                       <Skeleton className='h-5 w-16' />
                     ) : (
                       <span className='text-sm font-semibold'>
-                        {formatCurrency(paymentAmount)} {selectedPaymentMethod?.currency || creditCurrency}
+                        {formatCurrency(paymentAmount)}{' '}
+                        {selectedPaymentMethod?.currency || creditCurrency}
                       </span>
                     )}
                   </div>
@@ -508,7 +512,7 @@ export function RechargeFormCard({
         )}
 
       {/* Redemption Code Section */}
-      {redemptionEnabled ? (
+      {showRedemption && redemptionEnabled && (
         <div className='space-y-2.5 border-t pt-4 sm:space-y-3 sm:pt-6'>
           <div className='flex items-center gap-2'>
             <IconBadge tone='warning' size='xs'>
@@ -554,7 +558,8 @@ export function RechargeFormCard({
             </p>
           )}
         </div>
-      ) : (
+      )}
+      {showRedemption && !redemptionEnabled && (
         <Alert className='border-t'>
           <AlertDescription>
             {t(
