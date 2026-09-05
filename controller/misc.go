@@ -50,6 +50,12 @@ func GetStatus(c *gin.Context) {
 	passkeySetting := system_setting.GetPasskeySettings()
 	legalSetting := system_setting.GetLegalSettings()
 
+	fxRates := map[string]float64{}
+	fxBaseCurrency, fxCreditCurrency, fxFetchedAt := setting.FXBaseCurrency, setting.FXCreditCurrency, int64(0)
+	if snapshot, err := model.LatestFXRateSnapshot(); err == nil {
+		_ = common.UnmarshalJsonStr(snapshot.Rates, &fxRates)
+		fxBaseCurrency, fxFetchedAt = snapshot.BaseCurrency, snapshot.FetchedAt
+	}
 	data := gin.H{
 		"version":                     common.Version,
 		"start_time":                  common.StartTime,
@@ -96,9 +102,13 @@ func GetStatus(c *gin.Context) {
 
 		"password_login_encryption_enabled": common.PasswordLoginEncryptionEnabled,
 
-		"usd_exchange_rate": operation_setting.USDExchangeRate,
-		"price":             operation_setting.Price,
-		"stripe_unit_price": setting.StripeUnitPrice,
+		"usd_exchange_rate":  operation_setting.USDExchangeRate,
+		"fx_base_currency":   fxBaseCurrency,
+		"fx_credit_currency": fxCreditCurrency,
+		"fx_rates":           fxRates,
+		"fx_rate_timestamp":  fxFetchedAt,
+		"price":              operation_setting.Price,
+		"stripe_unit_price":  setting.StripeUnitPrice,
 
 		// 面板启用开关
 		"api_info_enabled":      cs.ApiInfoEnabled,

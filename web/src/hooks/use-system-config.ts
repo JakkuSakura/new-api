@@ -47,6 +47,9 @@ interface StatusApiResponse {
     usd_exchange_rate?: number
     custom_currency_symbol?: string
     custom_currency_exchange_rate?: number
+    fx_base_currency?: string
+    fx_credit_currency?: string
+    fx_rates?: Record<string, number>
   }
 }
 
@@ -80,15 +83,15 @@ export function mapStatusDataToConfig(
       DEFAULT_CURRENCY_CONFIG.quotaPerUnit
     ),
     usdExchangeRate: toNumber(
-      data.usd_exchange_rate,
-      DEFAULT_CURRENCY_CONFIG.usdExchangeRate
+      data.fx_rates?.[data.fx_credit_currency || 'USD'],
+      toNumber(data.usd_exchange_rate, DEFAULT_CURRENCY_CONFIG.usdExchangeRate)
     ),
     customCurrencySymbol:
       data.custom_currency_symbol?.trim() ||
       DEFAULT_CURRENCY_CONFIG.customCurrencySymbol,
     customCurrencyExchangeRate: toNumber(
-      data.custom_currency_exchange_rate,
-      DEFAULT_CURRENCY_CONFIG.customCurrencyExchangeRate
+      data.fx_rates?.[data.fx_credit_currency || 'USD'],
+      toNumber(data.custom_currency_exchange_rate, DEFAULT_CURRENCY_CONFIG.customCurrencyExchangeRate)
     ),
   }
 

@@ -128,6 +128,10 @@ export interface SystemStatus {
     usd_exchange_rate?: number
     custom_currency_symbol?: string
     custom_currency_exchange_rate?: number
+    fx_base_currency?: string
+    fx_credit_currency?: string
+    fx_rates?: Record<string, number>
+    fx_rate_timestamp?: number
     demo_site_enabled?: boolean
     user_agreement_enabled?: boolean
     privacy_policy_enabled?: boolean
