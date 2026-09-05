@@ -266,6 +266,10 @@ export type BillingSettings = {
   'general_setting.custom_currency_exchange_rate': number
   DisplayInCurrencyEnabled: boolean
   DisplayTokenStatEnabled: boolean
+  FXProvider: string
+  FXBaseCurrency: string
+  FXCreditCurrency: string
+  FXCreditRules: string
   ModelPrice: string
   ModelRatio: string
   CacheRatio: string

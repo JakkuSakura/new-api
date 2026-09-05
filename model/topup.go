@@ -16,6 +16,12 @@ type TopUp struct {
 	UserId          int     `json:"user_id" gorm:"index"`
 	Amount          int64   `json:"amount"`
 	Money           float64 `json:"money"`
+	InputAmount     float64 `json:"input_amount"`
+	InputCurrency   string  `json:"input_currency" gorm:"type:varchar(3)"`
+	GatewayAmount   float64 `json:"gateway_amount"`
+	GatewayCurrency string  `json:"gateway_currency" gorm:"type:varchar(3)"`
+	FXRate          float64 `json:"fx_rate"`
+	FXRateTimestamp int64   `json:"fx_rate_timestamp"`
 	TradeNo         string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
 	PaymentMethod   string  `json:"payment_method" gorm:"type:varchar(50)"`
 	PaymentProvider string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`

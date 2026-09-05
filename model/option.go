@@ -140,6 +140,11 @@ func InitOptionMap() {
 	common.OptionMap["DefaultUseAutoGroup"] = strconv.FormatBool(setting.DefaultUseAutoGroup)
 	common.OptionMap["MaxTokenAutoGroups"] = strconv.Itoa(setting.GetMaxTokenAutoGroups())
 	common.OptionMap["PayMethods"] = operation_setting.PayMethods2JsonString()
+	common.OptionMap["FXProvider"] = setting.FXProvider
+	common.OptionMap["FXAPIKey"] = setting.FXAPIKey
+	common.OptionMap["FXBaseCurrency"] = setting.FXBaseCurrency
+	common.OptionMap["FXCreditCurrency"] = setting.FXCreditCurrency
+	common.OptionMap["FXCreditRules"] = setting.FXCreditRules
 	common.OptionMap["GitHubClientId"] = ""
 	common.OptionMap["GitHubClientSecret"] = ""
 	common.OptionMap["TelegramBotToken"] = ""
@@ -643,6 +648,16 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.StreamCacheQueueLength, _ = strconv.Atoi(value)
 	case "PayMethods":
 		err = operation_setting.UpdatePayMethodsByJsonString(value)
+	case "FXProvider":
+		setting.FXProvider = value
+	case "FXAPIKey":
+		setting.FXAPIKey = value
+	case "FXBaseCurrency":
+		setting.FXBaseCurrency = strings.ToUpper(strings.TrimSpace(value))
+	case "FXCreditCurrency":
+		setting.FXCreditCurrency = strings.ToUpper(strings.TrimSpace(value))
+	case "FXCreditRules":
+		setting.FXCreditRules = value
 	case "WaffoPayMethods":
 		// WaffoPayMethods is read directly from OptionMap via setting.GetWaffoPayMethods().
 		// The value is already stored in OptionMap at the top of this function (line: common.OptionMap[key] = value).

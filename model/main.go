@@ -343,6 +343,7 @@ func migrateDB() error {
 		&Log{},
 		&Midjourney{},
 		&TopUp{},
+		&FXRateSnapshot{},
 		&QuotaData{},
 		&Task{},
 		&TaskPlugin{},

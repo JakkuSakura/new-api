@@ -64,6 +64,10 @@ const createPricingSchema = (t: (key: string) => string) =>
         .min(0.0001, t('Exchange rate must be greater than 0')),
       DisplayInCurrencyEnabled: z.boolean(),
       DisplayTokenStatEnabled: z.boolean(),
+      FXProvider: z.string().min(1),
+      FXBaseCurrency: z.string().length(3),
+      FXCreditCurrency: z.string().length(3),
+      FXCreditRules: z.string(),
       general_setting: z.object({
         quota_display_type: z.enum(['USD', 'CNY', 'TOKENS', 'CUSTOM']),
         custom_currency_symbol: z.string().max(8).optional(),
@@ -368,6 +372,17 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                 </SettingsSwitchItem>
               )}
             />
+          </SettingsForm>
+        </Form>
+      </SettingsSection>
+      <SettingsSection title={t('FX & Credit Currency')}>
+        <Form {...form}>
+          <SettingsForm onSubmit={handleSubmit}>
+            <SettingsPageFormActions onSave={handleSubmit} onReset={handleReset} isSaving={updateOption.isPending || isSubmitting} isResetDisabled={!isDirty} />
+            <FormField control={form.control} name='FXProvider' render={({ field }) => <FormItem><FormLabel>{t('FX provider')}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+            <FormField control={form.control} name='FXBaseCurrency' render={({ field }) => <FormItem><FormLabel>{t('FX base currency')}</FormLabel><FormControl><Input maxLength={3} {...field} /></FormControl><FormMessage /></FormItem>} />
+            <FormField control={form.control} name='FXCreditCurrency' render={({ field }) => <FormItem><FormLabel>{t('Credit currency')}</FormLabel><FormControl><Input maxLength={3} {...field} /></FormControl><FormMessage /></FormItem>} />
+            <FormField control={form.control} name='FXCreditRules' render={({ field }) => <FormItem><FormLabel>{t('Direct credit conversion rules')}</FormLabel><FormControl><Input {...field} placeholder='{"CNY":0.137}' /></FormControl><FormMessage /></FormItem>} />
           </SettingsForm>
         </Form>
       </SettingsSection>
