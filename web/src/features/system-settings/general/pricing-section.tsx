@@ -53,15 +53,11 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
-import { safeNumberFieldProps } from '../utils/numeric-field'
 
 const createPricingSchema = (t: (key: string) => string) =>
   z
     .object({
       QuotaPerUnit: z.coerce.number().min(0, t('Value must be at least 0')),
-      USDExchangeRate: z.coerce
-        .number()
-        .min(0.0001, t('Exchange rate must be greater than 0')),
       DisplayInCurrencyEnabled: z.boolean(),
       DisplayTokenStatEnabled: z.boolean(),
       FXProvider: z.string().min(1),
@@ -71,10 +67,7 @@ const createPricingSchema = (t: (key: string) => string) =>
       general_setting: z.object({
         quota_display_type: z.enum(['USD', 'CNY', 'TOKENS', 'CUSTOM']),
         custom_currency_symbol: z.string().max(8).optional(),
-        custom_currency_exchange_rate: z.coerce
-          .number()
-          .min(0.0001, t('Exchange rate must be greater than 0'))
-          .optional(),
+      custom_currency_exchange_rate: z.coerce.number().optional(),
       }),
     })
     .superRefine((data, ctx) => {
@@ -89,13 +82,6 @@ const createPricingSchema = (t: (key: string) => string) =>
           })
         }
 
-        if (data.general_setting.custom_currency_exchange_rate == null) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['general_setting', 'custom_currency_exchange_rate'],
-            message: t('Exchange rate is required'),
-          })
-        }
       }
     })
 
@@ -233,37 +219,6 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
               )}
             />
 
-            {displayType !== 'TOKENS' && (
-              <FormField
-                control={form.control}
-                name='USDExchangeRate'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {displayType === 'CNY'
-                        ? t('CNY per USD')
-                        : displayType === 'USD'
-                          ? t('USD Exchange Rate')
-                          : t('USD Exchange Rate')}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type='number'
-                        step='0.01'
-                        {...safeNumberFieldProps(field)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t(
-                        'Real exchange rate between USD and your payment gateway currency'
-                      )}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
             {displayType === 'CUSTOM' && (
               <div className='grid gap-4 sm:grid-cols-2'>
                 <FormField
@@ -286,37 +241,6 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                       </FormControl>
                       <FormDescription>
                         {t('Prefix used when displaying prices')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='general_setting.custom_currency_exchange_rate'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('Units per USD')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type='number'
-                          step='0.01'
-                          value={field.value ?? ''}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ''
-                                ? undefined
-                                : e.target.valueAsNumber
-                            )
-                          }
-                          name={field.name}
-                          onBlur={field.onBlur}
-                          ref={field.ref}
-                          placeholder={t('e.g. 8 means 1 USD = 8 units')}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t('Conversion rate from USD to your custom currency')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
