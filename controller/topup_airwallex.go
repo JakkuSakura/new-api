@@ -254,23 +254,11 @@ func GetAirwallexPaymentStatus(c *gin.Context) {
 	} else if age <= 60*60 {
 		pollInterval = 60
 	}
-	result, err := airwallexGet("/api/v1/pa/payment_intents", url.Values{"merchant_order_id": []string{tradeNo}})
+	status, err := fetchAirwallexPaymentStatus(tradeNo)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Airwallex 查询支付状态失败 trade_no=%s error=%q", tradeNo, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "查询支付状态失败"})
 		return
-	}
-	status := "pending"
-	items, _ := result["items"].([]any)
-	if len(items) == 0 {
-		items, _ = result["data"].([]any)
-	}
-	if len(items) > 0 {
-		if item, ok := items[0].(map[string]any); ok {
-			status = airwallexPaymentStatus(item["status"])
-		}
-	} else if item, ok := result["data"].(map[string]any); ok {
-		status = airwallexPaymentStatus(item["status"])
 	}
 	if status == "succeeded" {
 		if err := model.RechargeAirwallex(tradeNo, c.ClientIP()); err != nil {
@@ -280,6 +268,72 @@ func GetAirwallexPaymentStatus(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": status, "poll_interval_seconds": pollInterval}})
+}
+
+func fetchAirwallexPaymentStatus(tradeNo string) (string, error) {
+	result, err := airwallexGet("/api/v1/pa/payment_intents", url.Values{"merchant_order_id": []string{tradeNo}})
+	if err != nil {
+		return "pending", err
+	}
+	items, _ := result["items"].([]any)
+	if len(items) == 0 {
+		items, _ = result["data"].([]any)
+	}
+	if len(items) > 0 {
+		if item, ok := items[0].(map[string]any); ok {
+			return airwallexPaymentStatus(item["status"]), nil
+		}
+	} else if item, ok := result["data"].(map[string]any); ok {
+		return airwallexPaymentStatus(item["status"]), nil
+	}
+	return "pending", nil
+}
+
+func reconcileAirwallexTopUps(createdAfter int64, createdBefore int64) {
+	if !airwallexEnabled() {
+		return
+	}
+	topUps, err := model.GetPendingAirwallexTopUps(createdAfter, createdBefore)
+	if err != nil {
+		logger.LogError(nil, fmt.Sprintf("Airwallex 查询待处理订单失败 error=%q", err.Error()))
+		return
+	}
+	for _, topUp := range topUps {
+		status, err := fetchAirwallexPaymentStatus(topUp.TradeNo)
+		if err != nil {
+			logger.LogError(nil, fmt.Sprintf("Airwallex 查询支付状态失败 trade_no=%s error=%q", topUp.TradeNo, err.Error()))
+			continue
+		}
+		switch status {
+		case "succeeded":
+			if err := model.RechargeAirwallex(topUp.TradeNo, "backend-poll"); err != nil {
+				logger.LogError(nil, fmt.Sprintf("Airwallex 后台结算失败 trade_no=%s error=%q", topUp.TradeNo, err.Error()))
+			}
+		case "failed":
+			if err := model.UpdatePendingTopUpStatus(topUp.TradeNo, model.PaymentProviderAirwallex, common.TopUpStatusFailed); err != nil && err != model.ErrTopUpStatusInvalid {
+				logger.LogError(nil, fmt.Sprintf("Airwallex 更新失败订单状态失败 trade_no=%s error=%q", topUp.TradeNo, err.Error()))
+			}
+		}
+	}
+}
+
+func StartAirwallexPaymentReconciler() {
+	go func() {
+		reconcileAirwallexTopUps(time.Now().Unix()-10*60, 0)
+		reconcileAirwallexTopUps(time.Now().Unix()-60*60, time.Now().Unix()-10*60)
+		recent := time.NewTicker(3 * time.Second)
+		backfill := time.NewTicker(time.Minute)
+		defer recent.Stop()
+		defer backfill.Stop()
+		for {
+			select {
+			case now := <-recent.C:
+				reconcileAirwallexTopUps(now.Unix()-10*60, 0)
+			case now := <-backfill.C:
+				reconcileAirwallexTopUps(now.Unix()-60*60, now.Unix()-10*60)
+			}
+		}
+	}()
 }
 
 func airwallexPaymentStatus(value any) string {

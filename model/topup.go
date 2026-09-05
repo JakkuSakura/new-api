@@ -146,6 +146,18 @@ func GetTopUpByTradeNo(tradeNo string) *TopUp {
 	return topUp
 }
 
+func GetPendingAirwallexTopUps(createdAfter int64, createdBefore int64) ([]TopUp, error) {
+	query := DB.Where("payment_provider = ? AND status = ? AND create_time >= ?", PaymentProviderAirwallex, common.TopUpStatusPending, createdAfter)
+	if createdBefore > 0 {
+		query = query.Where("create_time < ?", createdBefore)
+	}
+	var topUps []TopUp
+	if err := query.Order("create_time ASC").Find(&topUps).Error; err != nil {
+		return nil, err
+	}
+	return topUps, nil
+}
+
 func UpdatePendingTopUpStatus(tradeNo string, expectedPaymentProvider string, targetStatus string) error {
 	if tradeNo == "" {
 		return errors.New("未提供支付单号")
