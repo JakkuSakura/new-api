@@ -54,8 +54,8 @@ func GetTopUpInfo(c *gin.Context) {
 	}
 	if airwallexEnabled() {
 		payMethods = append(payMethods,
-			map[string]string{"name": "Airwallex", "type": model.PaymentMethodAirwallex, "color": "#1E40AF", "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
-			map[string]string{"name": "Airwallex WeChat Pay", "type": model.PaymentMethodAirwallexWeChat, "color": "#07C160", "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
+			map[string]string{"name": "Airwallex", "type": model.PaymentMethodAirwallex, "color": "#1E40AF", "currency": setting.AirwallexCurrency, "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
+			map[string]string{"name": "Airwallex WeChat Pay", "type": model.PaymentMethodAirwallexWeChat, "color": "#07C160", "currency": setting.AirwallexCurrency, "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
 		)
 	}
 
@@ -103,6 +103,7 @@ func GetTopUpInfo(c *gin.Context) {
 	}
 
 	data := gin.H{
+		"credit_currency":                  setting.FXCreditCurrency,
 		"enable_online_topup":              isEpayTopUpEnabled(),
 		"enable_stripe_topup":              isStripeTopUpEnabled(),
 		"enable_airwallex_topup":           airwallexEnabled(),

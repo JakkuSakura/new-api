@@ -102,6 +102,7 @@ export interface PaymentMethod {
   min_topup?: number
   /** Optional react-icons component name or safe icon URL */
   icon?: string
+  currency?: string
 }
 
 /**
@@ -122,6 +123,8 @@ export interface WaffoPayMethod {
  * Topup configuration information
  */
 export interface TopupInfo {
+	/** Currency represented by the entered credit amount */
+	credit_currency?: string
   /** Whether online topup is enabled */
   enable_online_topup: boolean
   /** Whether Stripe topup is enabled */

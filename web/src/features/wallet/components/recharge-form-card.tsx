@@ -63,6 +63,7 @@ interface RechargeFormCardProps {
   paymentAmount: number
   calculating: boolean
   onPaymentMethodSelect: (method: PaymentMethod) => void
+  selectedPaymentMethod?: PaymentMethod
   paymentLoading: string | null
   redemptionCode: string
   onRedemptionCodeChange: (code: string) => void
@@ -71,7 +72,6 @@ interface RechargeFormCardProps {
   topupLink?: string
   loading?: boolean
   priceRatio?: number
-  usdExchangeRate?: number
   onOpenBilling?: () => void
   creemProducts?: CreemProduct[]
   enableCreemTopup?: boolean
@@ -82,6 +82,7 @@ interface RechargeFormCardProps {
   onWaffoMethodSelect?: (method: WaffoPayMethod, index: number) => void
   enableWaffoPancakeTopup?: boolean
   enableAirwallexTopup?: boolean
+  creditCurrency?: string
 }
 
 export function RechargeFormCard({
@@ -94,6 +95,7 @@ export function RechargeFormCard({
   paymentAmount,
   calculating,
   onPaymentMethodSelect,
+  selectedPaymentMethod,
   paymentLoading,
   redemptionCode,
   onRedemptionCodeChange,
@@ -102,7 +104,6 @@ export function RechargeFormCard({
   topupLink,
   loading,
   priceRatio = 1,
-  usdExchangeRate = 1,
   onOpenBilling,
   creemProducts,
   enableCreemTopup,
@@ -113,6 +114,7 @@ export function RechargeFormCard({
   onWaffoMethodSelect,
   enableWaffoPancakeTopup,
   enableAirwallexTopup,
+  creditCurrency = 'USD',
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
@@ -243,8 +245,7 @@ export function RechargeFormCard({
                       } = calculatePresetPricing(
                         preset.value,
                         priceRatio,
-                        discount,
-                        usdExchangeRate
+                        discount
                       )
                       return (
                         <Button
@@ -269,7 +270,7 @@ export function RechargeFormCard({
                             )}
                           </div>
                           <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            Pay {formatCurrency(actualPrice)}
+                            Pay {formatCurrency(actualPrice)} {selectedPaymentMethod?.currency || creditCurrency}
                             {hasDiscount && savedAmount > 0 && (
                               <span className='text-green-600'>
                                 {' '}
@@ -309,7 +310,7 @@ export function RechargeFormCard({
                       <Skeleton className='h-5 w-16' />
                     ) : (
                       <span className='text-sm font-semibold'>
-                        {formatCurrency(paymentAmount)}
+                        {formatCurrency(paymentAmount)} {selectedPaymentMethod?.currency || creditCurrency}
                       </span>
                     )}
                   </div>
