@@ -11,7 +11,42 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
+	"github.com/shopspring/decimal"
 )
+
+// ConvertMoney applies an exact configured direct rule when available. If no
+// rule exists, it converts through the configured FX base currency.
+func ConvertMoney(amount decimal.Decimal, from, to string) (decimal.Decimal, decimal.Decimal, int64, error) {
+	from = strings.ToUpper(strings.TrimSpace(from))
+	to = strings.ToUpper(strings.TrimSpace(to))
+	if from == "" || to == "" {
+		return decimal.Zero, decimal.Zero, 0, fmt.Errorf("currency is required")
+	}
+	if from == to {
+		return amount, decimal.NewFromInt(1), time.Now().Unix(), nil
+	}
+	var direct map[string]float64
+	if err := common.UnmarshalJsonStr(setting.FXCreditRules, &direct); err == nil {
+		if rate, ok := direct[from]; ok && rate > 0 {
+			return amount.Mul(decimal.NewFromFloat(rate)), decimal.NewFromFloat(rate), time.Now().Unix(), nil
+		}
+	}
+	snapshot, err := model.LatestFXRateSnapshot()
+	if err != nil {
+		return decimal.Zero, decimal.Zero, 0, err
+	}
+	var rates map[string]float64
+	if err := common.UnmarshalJsonStr(snapshot.Rates, &rates); err != nil {
+		return decimal.Zero, decimal.Zero, 0, err
+	}
+	fromRate, fromOK := rates[from]
+	toRate, toOK := rates[to]
+	if !fromOK || !toOK || fromRate <= 0 || toRate <= 0 {
+		return decimal.Zero, decimal.Zero, 0, fmt.Errorf("unsupported currency conversion %s to %s", from, to)
+	}
+	rate := decimal.NewFromFloat(toRate).Div(decimal.NewFromFloat(fromRate))
+	return amount.Mul(rate), rate, snapshot.FetchedAt, nil
+}
 
 func RefreshFXRates() error {
 	base := strings.ToUpper(strings.TrimSpace(setting.FXBaseCurrency))
