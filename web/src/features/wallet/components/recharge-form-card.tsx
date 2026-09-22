@@ -16,7 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Gift, ExternalLink, Loader2, Receipt, WalletCards } from 'lucide-react'
+import {
+  Gift,
+  ExternalLink,
+  Loader2,
+  Check,
+  Receipt,
+  WalletCards,
+} from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -250,38 +257,52 @@ export function RechargeFormCard({
                         discount
                       )
                       return (
-                        <Button
+                        <button
                           key={preset.value}
-                          variant='outline'
-                          className={cn(
-                            'flex min-h-16 flex-col items-start rounded-lg px-3 py-2.5 text-left whitespace-normal sm:min-h-[72px] sm:p-4',
-                            selectedPreset === preset.value
-                              ? 'border-foreground bg-foreground/5 dark:border-foreground dark:bg-foreground/10'
-                              : 'border-muted'
-                          )}
+                          type='button'
                           onClick={() => onSelectPreset(preset)}
+                          aria-pressed={selectedPreset === preset.value}
+                          className={cn(
+                            'group bg-card flex min-h-[84px] flex-col justify-between rounded-xl border p-3 text-left transition-all',
+                            'hover:border-foreground/30 hover:shadow-sm',
+                            selectedPreset === preset.value
+                              ? 'border-primary ring-primary/30 ring-2'
+                              : 'border-border'
+                          )}
                         >
-                          <div className='flex w-full items-center justify-between'>
-                            <div className='text-base font-semibold sm:text-lg'>
-                              {formatNumber(displayValue)}
-                            </div>
-                            {hasDiscount && (
-                              <div className='text-xs font-medium text-green-600'>
-                                {getDiscountLabel(discount)}
+                          <div className='flex w-full items-start justify-between gap-2'>
+                            <div className='min-w-0'>
+                              <div className='truncate text-lg leading-tight font-semibold tabular-nums'>
+                                {formatNumber(displayValue)}
+                                <span className='text-muted-foreground ml-1 text-xs font-medium'>
+                                  {creditCurrency}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                          <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            Pay {formatCurrency(actualPrice)}{' '}
-                            {selectedPaymentMethod?.currency || creditCurrency}
-                            {hasDiscount && savedAmount > 0 && (
-                              <span className='text-green-600'>
-                                {' '}
-                                • Save {formatCurrency(savedAmount)}
+                              <div className='text-muted-foreground mt-1 truncate text-xs tabular-nums'>
+                                {t('You Pay')} {formatCurrency(actualPrice)}{' '}
+                                {selectedPaymentMethod?.currency ||
+                                  creditCurrency}
+                              </div>
+                            </div>
+                            {selectedPreset === preset.value && (
+                              <span className='bg-primary text-primary-foreground inline-flex size-4 shrink-0 items-center justify-center rounded-full'>
+                                <Check className='size-2.5' />
                               </span>
                             )}
                           </div>
-                        </Button>
+                          {hasDiscount && (
+                            <div className='mt-2 flex items-center gap-1.5 text-xs'>
+                              <span className='rounded-full bg-green-500/10 px-1.5 py-0.5 font-medium text-green-600'>
+                                {getDiscountLabel(discount)}
+                              </span>
+                              {savedAmount > 0 && (
+                                <span className='text-green-600'>
+                                  {t('Save')} {formatCurrency(savedAmount)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </button>
                       )
                     })}
                   </div>
@@ -295,29 +316,32 @@ export function RechargeFormCard({
                 >
                   {t('Custom Amount')}
                 </Label>
-                <div className='grid grid-cols-[minmax(0,1fr)_minmax(110px,0.55fr)] gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center'>
+                <div className='relative'>
                   <Input
                     id='topup-amount'
                     type='number'
                     value={localAmount}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     min={minTopup}
-                    placeholder={`Minimum ${minTopup}`}
-                    className='h-9 text-base sm:h-10 sm:text-lg'
+                    placeholder={`${t('Minimum')} ${minTopup}`}
+                    className='h-10 pe-16 text-base sm:text-lg'
                   />
-                  <div className='bg-muted/30 flex min-h-9 items-center justify-between gap-2 rounded-md border px-3 lg:min-w-52'>
-                    <span className='text-muted-foreground truncate text-xs'>
-                      {t('Amount to pay:')}
+                  <span className='text-muted-foreground pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-sm font-medium'>
+                    {creditCurrency}
+                  </span>
+                </div>
+                <div className='bg-muted/30 flex items-center justify-between gap-2 rounded-lg border px-3 py-2'>
+                  <span className='text-muted-foreground text-xs'>
+                    {t('Amount to pay:')}
+                  </span>
+                  {calculating ? (
+                    <Skeleton className='h-5 w-16' />
+                  ) : (
+                    <span className='text-sm font-semibold tabular-nums'>
+                      {formatCurrency(paymentAmount)}{' '}
+                      {selectedPaymentMethod?.currency || creditCurrency}
                     </span>
-                    {calculating ? (
-                      <Skeleton className='h-5 w-16' />
-                    ) : (
-                      <span className='text-sm font-semibold'>
-                        {formatCurrency(paymentAmount)}{' '}
-                        {selectedPaymentMethod?.currency || creditCurrency}
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -343,9 +367,9 @@ export function RechargeFormCard({
                         : undefined
 
                       const button = (
-                        <Button
+                        <button
                           key={method.type}
-                          variant='outline'
+                          type='button'
                           onClick={() => onPaymentMethodSelect(method)}
                           disabled={disabled || !!paymentLoading}
                           title={disabledReason}
@@ -354,29 +378,35 @@ export function RechargeFormCard({
                               ? `${method.name}. ${disabledReason}`
                               : method.name
                           }
-                          className='min-h-14 min-w-0 justify-start gap-2 rounded-lg px-3 py-2 text-left'
-                        >
-                          {paymentLoading === method.type ? (
-                            <Loader2 className='h-4 w-4 animate-spin' />
-                          ) : (
-                            getPaymentIcon(
-                              method.type,
-                              'h-4 w-4',
-                              method.icon,
-                              method.name
-                            )
+                          className={cn(
+                            'bg-card flex min-h-14 min-w-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all',
+                            'hover:border-foreground/30 hover:shadow-sm',
+                            'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:shadow-none'
                           )}
-                          <span className='flex min-w-0 flex-col items-start gap-0.5'>
-                            <span className='max-w-full truncate'>
+                        >
+                          <span className='bg-muted/40 flex size-8 shrink-0 items-center justify-center rounded-lg'>
+                            {paymentLoading === method.type ? (
+                              <Loader2 className='h-4 w-4 animate-spin' />
+                            ) : (
+                              getPaymentIcon(
+                                method.type,
+                                'h-4 w-4',
+                                method.icon,
+                                method.name
+                              )
+                            )}
+                          </span>
+                          <span className='flex min-w-0 flex-col'>
+                            <span className='truncate text-sm font-medium'>
                               {method.name}
                             </span>
                             {disabledLabel && (
-                              <span className='text-muted-foreground max-w-full truncate text-[11px] leading-4 font-normal'>
+                              <span className='text-muted-foreground truncate text-[11px] leading-4'>
                                 {disabledLabel}
                               </span>
                             )}
                           </span>
-                        </Button>
+                        </button>
                       )
 
                       return disabled ? (

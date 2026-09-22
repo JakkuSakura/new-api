@@ -16,11 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, BarChart3, Plus, WalletCards } from 'lucide-react'
+import { Activity, BarChart3, Plus, Receipt, WalletCards } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatQuota } from '@/lib/format'
 
@@ -30,20 +29,23 @@ interface WalletStatsCardProps {
   user: UserWalletData | null
   loading?: boolean
   onAddFunds?: () => void
+  onOpenHistory?: () => void
 }
 
 export function WalletStatsCard(props: WalletStatsCardProps) {
   const { t } = useTranslation()
+
   if (props.loading) {
     return (
-      <div className='bg-card rounded-2xl border p-5 sm:p-7'>
-        <Skeleton className='h-4 w-32' />
-        <Skeleton className='mt-3 h-10 w-48' />
-        <div className='mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3'>
-          {['balance', 'usage', 'requests'].map((key) => (
-            <div key={key} className='bg-muted/50 rounded-xl p-3'>
-              <Skeleton className='h-3.5 w-20' />
-              <Skeleton className='mt-2 h-6 w-24' />
+      <div className='bg-card relative overflow-hidden rounded-3xl border p-6 sm:p-8'>
+        <Skeleton className='h-3 w-28' />
+        <Skeleton className='mt-4 h-12 w-56' />
+        <Skeleton className='mt-6 h-10 w-44' />
+        <div className='mt-8 grid grid-cols-2 gap-3 sm:max-w-md'>
+          {['usage', 'requests'].map((key) => (
+            <div key={key} className='bg-muted/40 rounded-2xl p-4'>
+              <Skeleton className='h-3.5 w-16' />
+              <Skeleton className='mt-2 h-6 w-20' />
             </div>
           ))}
         </div>
@@ -54,30 +56,17 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
   const stats: {
     label: string
     value: string
-    description: string
-    icon: typeof WalletCards
-    tone: IconBadgeTone
+    icon: typeof BarChart3
   }[] = [
-    {
-      label: t('Current Balance'),
-      value: formatQuota(props.user?.quota ?? 0),
-      description: t('Remaining quota'),
-      icon: WalletCards,
-      tone: 'success',
-    },
     {
       label: t('Total Usage'),
       value: formatQuota(props.user?.used_quota ?? 0),
-      description: t('Total consumed quota'),
       icon: BarChart3,
-      tone: 'info',
     },
     {
       label: t('API Requests'),
       value: (props.user?.request_count ?? 0).toLocaleString(),
-      description: t('Total requests made'),
       icon: Activity,
-      tone: 'chart-4',
     },
   ]
 
@@ -85,57 +74,67 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
     <div
       data-wallet-dashboard='true'
       data-testid='wallet-dashboard'
-      className='from-card via-card to-primary/5 relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 sm:p-7'
+      className='from-primary/10 via-card to-card relative overflow-hidden rounded-3xl border bg-gradient-to-br p-6 sm:p-8'
     >
-      <div className='relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between'>
-        <div>
-          <div className='text-muted-foreground flex items-center gap-2 text-sm font-medium'>
-            <IconBadge tone='success' size='xs'>
-              <WalletCards />
-            </IconBadge>
+      <div
+        aria-hidden='true'
+        className='bg-primary/15 pointer-events-none absolute -top-24 -right-20 size-64 rounded-full blur-3xl'
+      />
+      <div
+        aria-hidden='true'
+        className='bg-chart-4/10 pointer-events-none absolute -bottom-28 -left-16 size-56 rounded-full blur-3xl'
+      />
+
+      <div className='relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between'>
+        <div className='min-w-0'>
+          <div className='text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-[0.18em] uppercase'>
+            <span className='bg-primary/15 text-primary inline-flex size-6 items-center justify-center rounded-full'>
+              <WalletCards className='size-3.5' />
+            </span>
             {t('Available Balance')}
           </div>
           <div
             data-wallet-balance='true'
             data-testid='wallet-balance'
-            className='mt-2 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-5xl'
+            className='mt-3 font-mono text-4xl leading-none font-bold tracking-tight tabular-nums sm:text-6xl'
           >
-            {stats[0].value}
+            {formatQuota(props.user?.quota ?? 0)}
           </div>
-          <p className='text-muted-foreground mt-1 text-sm'>
+          <p className='text-muted-foreground mt-3 text-sm'>
             {t('Ready to use across your account')}
           </p>
+          <div className='mt-6 flex flex-wrap gap-2'>
+            {props.onAddFunds && (
+              <Button size='lg' onClick={props.onAddFunds}>
+                <Plus data-icon='inline-start' />
+                {t('Add Funds')}
+              </Button>
+            )}
+            {props.onOpenHistory && (
+              <Button size='lg' variant='outline' onClick={props.onOpenHistory}>
+                <Receipt data-icon='inline-start' />
+                {t('Billing history')}
+              </Button>
+            )}
+          </div>
         </div>
-        {props.onAddFunds && (
-          <Button size='lg' onClick={props.onAddFunds}>
-            <Plus data-icon='inline-start' />
-            {t('Add Funds')}
-          </Button>
-        )}
-      </div>
-      <div className='relative mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3'>
-        {stats.slice(1).map((item) => (
-          <div
-            key={item.label}
-            className='bg-background/70 min-w-0 rounded-xl border p-3 sm:p-4'
-          >
-            <div className='flex items-center gap-1.5 sm:gap-2.5'>
-              <IconBadge tone={item.tone} size='stat'>
-                <item.icon />
-              </IconBadge>
-              <div className='text-muted-foreground truncate text-[11px] font-medium tracking-wider uppercase sm:text-xs'>
-                {item.label}
+
+        <div className='grid w-full grid-cols-2 gap-3 sm:max-w-sm lg:w-80'>
+          {stats.map((item) => (
+            <div
+              key={item.label}
+              className='bg-background/70 min-w-0 rounded-2xl border p-4 backdrop-blur'
+            >
+              <div className='text-muted-foreground flex items-center gap-2 text-[11px] font-medium tracking-wider uppercase'>
+                <item.icon className='size-3.5' />
+                <span className='truncate'>{item.label}</span>
+              </div>
+              <div className='mt-2 font-mono text-lg font-bold tracking-tight break-all tabular-nums sm:text-2xl'>
+                {item.value}
               </div>
             </div>
-
-            <div className='text-foreground mt-1.5 font-mono text-sm font-bold tracking-tight break-all tabular-nums sm:mt-2.5 sm:text-2xl'>
-              {item.value}
-            </div>
-            <div className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>
-              {item.description}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )

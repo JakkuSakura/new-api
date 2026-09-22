@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Loader2, ShieldCheck } from 'lucide-react'
+import { Gift, Loader2, Receipt } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,9 +31,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStatus } from '@/hooks/use-status'
 import { getSelf } from '@/lib/api'
 
@@ -357,7 +357,7 @@ export function Wallet(props: WalletProps) {
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('Wallet')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
-          <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
+          <div className='mx-auto flex w-full max-w-7xl flex-col gap-5'>
             <WalletStatsCard
               user={user}
               loading={userLoading}
@@ -366,141 +366,133 @@ export function Wallet(props: WalletProps) {
                   .querySelector('#wallet-add-funds')
                   ?.scrollIntoView({ behavior: 'smooth' })
               }
+              onOpenHistory={() => setBillingDialogOpen(true)}
             />
 
-            <div id='wallet-add-funds' className='scroll-mt-4'>
-              <RechargeFormCard
-                topupInfo={topupInfo}
-                presetAmounts={presetAmounts}
-                selectedPreset={selectedPreset}
-                onSelectPreset={handleSelectPreset}
-                topupAmount={topupAmount}
-                onTopupAmountChange={handleTopupAmountChange}
-                paymentAmount={paymentAmount}
-                calculating={calculating}
-                onPaymentMethodSelect={handlePaymentMethodSelect}
-                selectedPaymentMethod={selectedPaymentMethod}
-                creditCurrency={topupInfo?.credit_currency}
-                paymentLoading={paymentLoading}
-                redemptionCode={redemptionCode}
-                onRedemptionCodeChange={setRedemptionCode}
-                onRedeem={handleRedeem}
-                redeeming={redeeming}
-                topupLink={topupInfo?.topup_link}
-                loading={topupLoading}
-                priceRatio={(status?.price as number) || 1}
-                onOpenBilling={() => setBillingDialogOpen(true)}
-                creemProducts={topupInfo?.creem_products}
-                enableCreemTopup={topupInfo?.enable_creem_topup}
-                onCreemProductSelect={handleCreemProductSelect}
-                enableWaffoTopup={topupInfo?.enable_waffo_topup}
-                waffoPayMethods={topupInfo?.waffo_pay_methods}
-                waffoMinTopup={topupInfo?.waffo_min_topup}
-                onWaffoMethodSelect={handleWaffoMethodSelect}
-                enableWaffoPancakeTopup={topupInfo?.enable_waffo_pancake_topup}
-                enableAirwallexTopup={topupInfo?.enable_airwallex_topup}
-                showRedemption={false}
-              />
+            <div className='grid items-start gap-5 lg:grid-cols-3'>
+              <div id='wallet-add-funds' className='scroll-mt-4 lg:col-span-2'>
+                <RechargeFormCard
+                  topupInfo={topupInfo}
+                  presetAmounts={presetAmounts}
+                  selectedPreset={selectedPreset}
+                  onSelectPreset={handleSelectPreset}
+                  topupAmount={topupAmount}
+                  onTopupAmountChange={handleTopupAmountChange}
+                  paymentAmount={paymentAmount}
+                  calculating={calculating}
+                  onPaymentMethodSelect={handlePaymentMethodSelect}
+                  selectedPaymentMethod={selectedPaymentMethod}
+                  creditCurrency={topupInfo?.credit_currency}
+                  paymentLoading={paymentLoading}
+                  redemptionCode={redemptionCode}
+                  onRedemptionCodeChange={setRedemptionCode}
+                  onRedeem={handleRedeem}
+                  redeeming={redeeming}
+                  topupLink={topupInfo?.topup_link}
+                  loading={topupLoading}
+                  priceRatio={(status?.price as number) || 1}
+                  onOpenBilling={() => setBillingDialogOpen(true)}
+                  creemProducts={topupInfo?.creem_products}
+                  enableCreemTopup={topupInfo?.enable_creem_topup}
+                  onCreemProductSelect={handleCreemProductSelect}
+                  enableWaffoTopup={topupInfo?.enable_waffo_topup}
+                  waffoPayMethods={topupInfo?.waffo_pay_methods}
+                  waffoMinTopup={topupInfo?.waffo_min_topup}
+                  onWaffoMethodSelect={handleWaffoMethodSelect}
+                  enableWaffoPancakeTopup={
+                    topupInfo?.enable_waffo_pancake_topup
+                  }
+                  enableAirwallexTopup={topupInfo?.enable_airwallex_topup}
+                  showRedemption={false}
+                />
+              </div>
+
+              <div className='flex flex-col gap-5'>
+                <section className='bg-card rounded-2xl border p-5'>
+                  <div className='flex items-center gap-2'>
+                    <IconBadge tone='warning' size='xs'>
+                      <Gift />
+                    </IconBadge>
+                    <h3 className='font-semibold'>{t('Redeem a code')}</h3>
+                  </div>
+                  <p className='text-muted-foreground mt-1 text-sm'>
+                    {t('Apply a redemption code to your account balance.')}
+                  </p>
+                  {topupInfo?.enable_redemption !== false ? (
+                    <div className='mt-4 flex gap-2'>
+                      <Label htmlFor='wallet-redemption' className='sr-only'>
+                        {t('Redemption code')}
+                      </Label>
+                      <Input
+                        id='wallet-redemption'
+                        value={redemptionCode}
+                        onChange={(e) => setRedemptionCode(e.target.value)}
+                        placeholder={t('Enter your redemption code')}
+                      />
+                      <Button
+                        variant='outline'
+                        onClick={handleRedeem}
+                        disabled={redeeming}
+                      >
+                        {redeeming ? t('Redeeming...') : t('Redeem')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className='text-muted-foreground mt-4 text-sm'>
+                      {t('Redemption codes are currently unavailable.')}
+                    </p>
+                  )}
+                  {topupInfo?.topup_link && (
+                    <a
+                      className='mt-3 inline-block text-sm underline underline-offset-4'
+                      href={topupInfo.topup_link}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      {t('Get a redemption code')}
+                    </a>
+                  )}
+                </section>
+
+                <section className='bg-card rounded-2xl border p-5'>
+                  <div className='flex items-center gap-2'>
+                    <IconBadge tone='info' size='xs'>
+                      <Receipt />
+                    </IconBadge>
+                    <h3 className='font-semibold'>{t('Billing history')}</h3>
+                  </div>
+                  <p className='text-muted-foreground mt-1 text-sm'>
+                    {t('Review your previous payments and account transfers.')}
+                  </p>
+                  <Button
+                    variant='outline'
+                    className='mt-4 w-full'
+                    onClick={() => setBillingDialogOpen(true)}
+                  >
+                    {t('Open billing history')}
+                  </Button>
+                </section>
+              </div>
             </div>
 
-            <Tabs defaultValue='subscriptions' className='w-full'>
-              <TabsList className='w-full justify-start overflow-x-auto sm:w-fit'>
-                {showSubscriptionPanel && (
-                  <TabsTrigger value='subscriptions'>
-                    {t('Subscriptions')}
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value='affiliate'>
-                  {t('Affiliate Rewards')}
-                </TabsTrigger>
-                <TabsTrigger value='account'>{t('Account Tools')}</TabsTrigger>
-              </TabsList>
-              {showSubscriptionPanel && (
-                <TabsContent value='subscriptions' className='mt-4'>
-                  <SubscriptionPlansCard
-                    topupInfo={topupInfo}
-                    onAvailabilityChange={handleSubscriptionAvailabilityChange}
-                    userQuota={user?.quota}
-                    onPurchaseSuccess={fetchUser}
-                  />
-                </TabsContent>
-              )}
-              <TabsContent value='affiliate' className='mt-4'>
-                <AffiliateRewardsCard
-                  user={user}
-                  affiliateLink={affiliateLink}
-                  onTransfer={() => setTransferDialogOpen(true)}
-                  complianceConfirmed={
-                    topupInfo?.payment_compliance_confirmed !== false
-                  }
-                  loading={affiliateLoading}
-                />
-              </TabsContent>
-              <TabsContent value='account' className='mt-4'>
-                <div className='grid gap-4 md:grid-cols-2'>
-                  <div className='bg-card rounded-xl border p-5'>
-                    <div className='flex items-center gap-2'>
-                      <ShieldCheck className='text-primary size-5' />
-                      <h3 className='font-semibold'>{t('Redeem a code')}</h3>
-                    </div>
-                    <p className='text-muted-foreground mt-1 text-sm'>
-                      {t('Apply a redemption code to your account balance.')}
-                    </p>
-                    {topupInfo?.enable_redemption !== false ? (
-                      <div className='mt-4 flex gap-2'>
-                        <Label htmlFor='wallet-redemption' className='sr-only'>
-                          {t('Redemption code')}
-                        </Label>
-                        <Input
-                          id='wallet-redemption'
-                          value={redemptionCode}
-                          onChange={(e) => setRedemptionCode(e.target.value)}
-                          placeholder={t('Enter your redemption code')}
-                        />
-                        <Button
-                          variant='outline'
-                          onClick={handleRedeem}
-                          disabled={redeeming}
-                        >
-                          {redeeming ? t('Redeeming...') : t('Redeem')}
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className='text-muted-foreground mt-4 text-sm'>
-                        {t('Redemption codes are currently unavailable.')}
-                      </p>
-                    )}
-                    {topupInfo?.topup_link && (
-                      <a
-                        className='mt-3 inline-block text-sm underline underline-offset-4'
-                        href={topupInfo.topup_link}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                      >
-                        {t('Get a redemption code')}
-                      </a>
-                    )}
-                  </div>
-                  <div className='bg-card flex flex-col justify-between rounded-xl border p-5'>
-                    <div>
-                      <h3 className='font-semibold'>{t('Billing history')}</h3>
-                      <p className='text-muted-foreground mt-1 text-sm'>
-                        {t(
-                          'Review your previous payments and account transfers.'
-                        )}
-                      </p>
-                    </div>
-                    <Button
-                      variant='outline'
-                      className='mt-5 w-full sm:w-fit'
-                      onClick={() => setBillingDialogOpen(true)}
-                    >
-                      {t('Open billing history')}
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+            {showSubscriptionPanel && (
+              <SubscriptionPlansCard
+                topupInfo={topupInfo}
+                onAvailabilityChange={handleSubscriptionAvailabilityChange}
+                userQuota={user?.quota}
+                onPurchaseSuccess={fetchUser}
+              />
+            )}
+
+            <AffiliateRewardsCard
+              user={user}
+              affiliateLink={affiliateLink}
+              onTransfer={() => setTransferDialogOpen(true)}
+              complianceConfirmed={
+                topupInfo?.payment_compliance_confirmed !== false
+              }
+              loading={affiliateLoading}
+            />
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>
