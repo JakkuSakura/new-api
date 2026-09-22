@@ -25,6 +25,7 @@ import type {
   SystemOptionsResponse,
   SystemTaskListResponse,
   SystemTaskResponse,
+  OpenRouterReferenceResponse,
   UpdateOptionRequest,
   UpdateOptionResponse,
   UpstreamChannelsResponse,
@@ -102,6 +103,14 @@ export async function fetchUpstreamRatios(request: FetchUpstreamRatiosRequest) {
   const res = await api.post<UpstreamRatiosResponse>(
     '/api/ratio_sync/fetch',
     request
+  )
+  return res.data
+}
+
+export async function getOpenRouterReferencePrices(refresh = false) {
+  const res = await api.get<OpenRouterReferenceResponse>(
+    '/api/ratio_sync/openrouter/reference',
+    { params: refresh ? { refresh: 1 } : undefined }
   )
   return res.data
 }

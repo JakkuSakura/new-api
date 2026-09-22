@@ -462,3 +462,28 @@ export type UpstreamRatiosResponse = {
     test_results: TestResult[]
   }
 }
+
+export type OpenRouterReferenceModel = {
+  id: string
+  name: string
+  prompt_usd_per_1m: number
+  completion_usd_per_1m: number
+  cache_read_usd_per_1m: number
+  cache_write_usd_per_1m: number
+  model_ratio: number
+  completion_ratio: number
+  cache_ratio: number
+  create_cache_ratio: number
+  context_length: number
+}
+
+export type OpenRouterReferenceResponse = {
+  success: boolean
+  message: string
+  data: {
+    models: OpenRouterReferenceModel[]
+    fetched_at: number
+    quota_per_unit: number
+    source: string
+  }
+}

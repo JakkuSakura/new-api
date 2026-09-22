@@ -22,6 +22,7 @@ import { CheckinSettingsSection } from '../general/checkin-settings-section'
 import { PricingSection } from '../general/pricing-section'
 import { QuotaSettingsSection } from '../general/quota-settings-section'
 import { PaymentSettingsSection } from '../integrations/payment-settings-section'
+import { ModelPriceSyncSection } from '../models/model-price-sync'
 import { RatioSettingsCard } from '../models/ratio-settings-card'
 import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
@@ -114,6 +115,13 @@ const BILLING_SECTIONS = [
         toolPricesDefault={settings['tool_price_setting.prices']}
         visibleTabs={['models', 'unset-models', 'tool-prices', 'upstream-sync']}
       />
+    ),
+  },
+  {
+    id: 'model-price-sync',
+    titleKey: 'Model Price Sync',
+    build: (settings: BillingSettings) => (
+      <ModelPriceSyncSection modelDefaults={getModelDefaults(settings)} />
     ),
   },
   {
