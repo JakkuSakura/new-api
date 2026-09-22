@@ -16,15 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  Gift,
-  ExternalLink,
-  Loader2,
-  Check,
-  Receipt,
-  WalletCards,
-} from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Gift, ExternalLink, Loader2, Receipt, WalletCards } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -33,6 +26,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
 import {
@@ -41,16 +35,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-import {
-  formatCurrency,
-  getDiscountLabel,
-  getPaymentIcon,
-  getMinTopupAmount,
-  calculatePresetPricing,
-} from '../lib'
+import { formatCurrency, getPaymentIcon, getMinTopupAmount } from '../lib'
 import type {
   PaymentMethod,
   PresetAmount,
@@ -95,9 +82,6 @@ interface RechargeFormCardProps {
 
 export function RechargeFormCard({
   topupInfo,
-  presetAmounts,
-  selectedPreset,
-  onSelectPreset,
   topupAmount,
   onTopupAmountChange,
   paymentAmount,
@@ -111,7 +95,6 @@ export function RechargeFormCard({
   redeeming,
   topupLink,
   loading,
-  priceRatio = 1,
   onOpenBilling,
   creemProducts,
   enableCreemTopup,
@@ -127,6 +110,16 @@ export function RechargeFormCard({
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
+  const [selectedCurrency, setSelectedCurrency] = useState(creditCurrency)
+
+  const currencyOptions = useMemo(() => {
+    const currencies = new Set<string>()
+    currencies.add(creditCurrency.toUpperCase())
+    for (const method of topupInfo?.pay_methods ?? []) {
+      if (method.currency) currencies.add(method.currency.toUpperCase())
+    }
+    return [...currencies]
+  }, [topupInfo?.pay_methods, creditCurrency])
 
   useEffect(() => {
     // Empty string must survive, otherwise the field can never be cleared
@@ -235,80 +228,6 @@ export function RechargeFormCard({
         <div className='grid gap-4 sm:gap-6 lg:grid-cols-2'>
           {hasConfigurableTopup && (
             <>
-              {presetAmounts.length > 0 && (
-                <div className='space-y-2.5 sm:space-y-3'>
-                  <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-                    {t('Amount')}
-                  </Label>
-                  <div className='grid grid-cols-2 gap-1.5 sm:gap-3 md:grid-cols-4'>
-                    {presetAmounts.map((preset) => {
-                      const discount =
-                        preset.discount ||
-                        topupInfo?.discount?.[preset.value] ||
-                        1.0
-                      const {
-                        displayValue,
-                        actualPrice,
-                        savedAmount,
-                        hasDiscount,
-                      } = calculatePresetPricing(
-                        preset.value,
-                        priceRatio,
-                        discount
-                      )
-                      return (
-                        <button
-                          key={preset.value}
-                          type='button'
-                          onClick={() => onSelectPreset(preset)}
-                          aria-pressed={selectedPreset === preset.value}
-                          className={cn(
-                            'group bg-card flex min-h-[84px] flex-col justify-between rounded-xl border p-3 text-left transition-all',
-                            'hover:border-foreground/30 hover:shadow-sm',
-                            selectedPreset === preset.value
-                              ? 'border-primary ring-primary/30 ring-2'
-                              : 'border-border'
-                          )}
-                        >
-                          <div className='flex w-full items-start justify-between gap-2'>
-                            <div className='min-w-0'>
-                              <div className='truncate text-lg leading-tight font-semibold tabular-nums'>
-                                {formatNumber(displayValue)}
-                                <span className='text-muted-foreground ml-1 text-xs font-medium'>
-                                  {creditCurrency}
-                                </span>
-                              </div>
-                              <div className='text-muted-foreground mt-1 truncate text-xs tabular-nums'>
-                                {t('You Pay')} {formatCurrency(actualPrice)}{' '}
-                                {selectedPaymentMethod?.currency ||
-                                  creditCurrency}
-                              </div>
-                            </div>
-                            {selectedPreset === preset.value && (
-                              <span className='bg-primary text-primary-foreground inline-flex size-4 shrink-0 items-center justify-center rounded-full'>
-                                <Check className='size-2.5' />
-                              </span>
-                            )}
-                          </div>
-                          {hasDiscount && (
-                            <div className='mt-2 flex items-center gap-1.5 text-xs'>
-                              <span className='rounded-full bg-green-500/10 px-1.5 py-0.5 font-medium text-green-600'>
-                                {getDiscountLabel(discount)}
-                              </span>
-                              {savedAmount > 0 && (
-                                <span className='text-green-600'>
-                                  {t('Save')} {formatCurrency(savedAmount)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
               <div className='space-y-2.5 sm:space-y-3'>
                 <Label
                   htmlFor='topup-amount'
@@ -316,7 +235,7 @@ export function RechargeFormCard({
                 >
                   {t('Custom Amount')}
                 </Label>
-                <div className='relative'>
+                <div className='flex gap-2'>
                   <Input
                     id='topup-amount'
                     type='number'
@@ -324,11 +243,20 @@ export function RechargeFormCard({
                     onChange={(e) => handleAmountChange(e.target.value)}
                     min={minTopup}
                     placeholder={`${t('Minimum')} ${minTopup}`}
-                    className='h-10 pe-16 text-base sm:text-lg'
+                    className='h-10 flex-1 text-base sm:text-lg'
                   />
-                  <span className='text-muted-foreground pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-sm font-medium'>
-                    {creditCurrency}
-                  </span>
+                  <NativeSelect
+                    aria-label={t('Currency')}
+                    className='w-28 [&_select]:h-10'
+                    value={selectedCurrency}
+                    onChange={(e) => setSelectedCurrency(e.target.value)}
+                  >
+                    {currencyOptions.map((currency) => (
+                      <NativeSelectOption key={currency} value={currency}>
+                        {currency}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
                 </div>
                 <div className='bg-muted/30 flex items-center justify-between gap-2 rounded-lg border px-3 py-2'>
                   <span className='text-muted-foreground text-xs'>
@@ -339,7 +267,7 @@ export function RechargeFormCard({
                   ) : (
                     <span className='text-sm font-semibold tabular-nums'>
                       {formatCurrency(paymentAmount)}{' '}
-                      {selectedPaymentMethod?.currency || creditCurrency}
+                      {selectedPaymentMethod?.currency || selectedCurrency}
                     </span>
                   )}
                 </div>
