@@ -45,6 +45,7 @@ const defaultBillingSettings: BillingSettings = {
   ModelRatio: '',
   CacheRatio: '',
   CreateCacheRatio: '',
+  OpenRouterModelMapping: '{}',
   CompletionRatio: '',
   ImageRatio: '',
   AudioRatio: '',

@@ -134,6 +134,7 @@ func InitOptionMap() {
 	common.OptionMap["AirwallexCurrency"] = setting.AirwallexCurrency
 	common.OptionMap["AirwallexUnitPrice"] = strconv.FormatFloat(setting.AirwallexUnitPrice, 'f', -1, 64)
 	common.OptionMap["AirwallexMinTopUp"] = strconv.Itoa(setting.AirwallexMinTopUp)
+	common.OptionMap["OpenRouterModelMapping"] = setting.OpenRouterModelMapping
 	common.OptionMap["TopupGroupRatio"] = common.TopupGroupRatio2JSONString()
 	common.OptionMap["Chats"] = setting.Chats2JsonString()
 	common.OptionMap["AutoGroups"] = setting.AutoGroups2JsonString()
@@ -636,6 +637,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.ChannelDisableThreshold, _ = strconv.ParseFloat(value, 64)
 	case "QuotaPerUnit":
 		common.QuotaPerUnit, _ = strconv.ParseFloat(value, 64)
+	case "OpenRouterModelMapping":
+		setting.OpenRouterModelMapping = value
 	case "SensitiveWords":
 		setting.SensitiveWordsFromString(value)
 	case "AutomaticDisableKeywords":

@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/billing_setting"
 
 	"github.com/gin-gonic/gin"
@@ -130,14 +131,35 @@ func ensureOpenRouterReferenceRefresh() {
 }
 
 type openRouterReferenceIndex struct {
-	fullID map[string]dto.OpenRouterReferenceModel
-	suffix map[string]dto.OpenRouterReferenceModel
+	fullID  map[string]dto.OpenRouterReferenceModel
+	suffix  map[string]dto.OpenRouterReferenceModel
+	mapping map[string]string
 }
 
-func buildOpenRouterReferenceIndex(models []dto.OpenRouterReferenceModel) openRouterReferenceIndex {
+// getOpenRouterModelMapping returns the configured local-name -> OpenRouter id
+// mapping, keyed by lowercase local name.
+func getOpenRouterModelMapping() map[string]string {
+	raw := map[string]string{}
+	if err := common.Unmarshal([]byte(setting.OpenRouterModelMapping), &raw); err != nil {
+		return map[string]string{}
+	}
+	mapping := make(map[string]string, len(raw))
+	for name, id := range raw {
+		local := strings.ToLower(strings.TrimSpace(name))
+		target := strings.ToLower(strings.TrimSpace(id))
+		if local == "" || target == "" {
+			continue
+		}
+		mapping[local] = target
+	}
+	return mapping
+}
+
+func buildOpenRouterReferenceIndex(models []dto.OpenRouterReferenceModel, mapping map[string]string) openRouterReferenceIndex {
 	index := openRouterReferenceIndex{
-		fullID: make(map[string]dto.OpenRouterReferenceModel, len(models)),
-		suffix: make(map[string]dto.OpenRouterReferenceModel, len(models)),
+		fullID:  make(map[string]dto.OpenRouterReferenceModel, len(models)),
+		suffix:  make(map[string]dto.OpenRouterReferenceModel, len(models)),
+		mapping: mapping,
 	}
 	for _, model := range models {
 		id := strings.ToLower(strings.TrimSpace(model.ID))
@@ -166,6 +188,11 @@ func (index openRouterReferenceIndex) match(name string) (dto.OpenRouterReferenc
 	if normalized == "" {
 		return dto.OpenRouterReferenceModel{}, false
 	}
+	if target, ok := index.mapping[normalized]; ok {
+		if model, ok := index.fullID[target]; ok {
+			return model, true
+		}
+	}
 	if model, ok := index.fullID[normalized]; ok {
 		return model, true
 	}
@@ -185,7 +212,7 @@ func applyOpenRouterDiscounts(pricing []model.Pricing) {
 	if len(models) == 0 || common.QuotaPerUnit <= 0 {
 		return
 	}
-	index := buildOpenRouterReferenceIndex(models)
+	index := buildOpenRouterReferenceIndex(models, getOpenRouterModelMapping())
 	for i := range pricing {
 		item := &pricing[i]
 		if item.QuotaType != 0 || item.BillingMode == billing_setting.BillingModeTieredExpr {

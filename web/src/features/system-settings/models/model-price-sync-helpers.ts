@@ -31,6 +31,28 @@ export type LocalModelPrice = {
 export type OpenRouterReferenceIndex = {
   byFullID: Map<string, OpenRouterReferenceModel>
   bySuffix: Map<string, OpenRouterReferenceModel>
+  mapping: Map<string, string>
+}
+
+export function parseStringRecord(
+  raw: string | undefined
+): Record<string, string> {
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {}
+    }
+    const result: Record<string, string> = {}
+    for (const [key, value] of Object.entries(
+      parsed as Record<string, unknown>
+    )) {
+      if (typeof value === 'string' && value.trim()) result[key] = value
+    }
+    return result
+  } catch {
+    return {}
+  }
 }
 
 export type ModelPriceSyncRow = LocalModelPrice & {
@@ -68,7 +90,8 @@ export function parseJSONNumberRecord(
  * its full `vendor/model` id or by the bare model slug.
  */
 export function buildOpenRouterReferenceIndex(
-  models: OpenRouterReferenceModel[]
+  models: OpenRouterReferenceModel[],
+  mapping: Record<string, string> = {}
 ): OpenRouterReferenceIndex {
   const byFullID = new Map<string, OpenRouterReferenceModel>()
   const bySuffix = new Map<string, OpenRouterReferenceModel>()
@@ -81,7 +104,13 @@ export function buildOpenRouterReferenceIndex(
     if (!suffix) continue
     if (!bySuffix.has(suffix)) bySuffix.set(suffix, model)
   }
-  return { byFullID, bySuffix }
+  const mappingIndex = new Map<string, string>()
+  for (const [local, target] of Object.entries(mapping)) {
+    const name = local.trim().toLowerCase()
+    const id = target.trim().toLowerCase()
+    if (name && id) mappingIndex.set(name, id)
+  }
+  return { byFullID, bySuffix, mapping: mappingIndex }
 }
 
 export function matchOpenRouterModel(
@@ -90,6 +119,11 @@ export function matchOpenRouterModel(
 ): OpenRouterReferenceModel | null {
   const normalized = name.trim().toLowerCase()
   if (!normalized) return null
+  const mapped = index.mapping.get(normalized)
+  if (mapped) {
+    const mappedModel = index.byFullID.get(mapped)
+    if (mappedModel) return mappedModel
+  }
   const exact = index.byFullID.get(normalized)
   if (exact) return exact
   const slash = normalized.lastIndexOf('/')
@@ -158,9 +192,10 @@ export function buildLocalModelPrices(input: {
 export function buildModelPriceSyncRows(
   locals: LocalModelPrice[],
   models: OpenRouterReferenceModel[],
-  quotaPerUnit: number
+  quotaPerUnit: number,
+  mapping: Record<string, string> = {}
 ): ModelPriceSyncRow[] {
-  const index = buildOpenRouterReferenceIndex(models)
+  const index = buildOpenRouterReferenceIndex(models, mapping)
   return locals.map((local) => {
     const reference = matchOpenRouterModel(local.name, index)
     let currentInputUSD: number | null = null

@@ -71,6 +71,17 @@ describe('model price sync helpers', () => {
     expect(matchOpenRouterModel('unknown-model', index)).toBeNull()
   })
 
+  test('prefers a configured manual mapping over name matching', () => {
+    const index = buildOpenRouterReferenceIndex(
+      [reference('deepseek/deepseek-v4.1-flash', 0.15, 0.6)],
+      { 'deepseek-flash': 'deepseek/deepseek-v4.1-flash' }
+    )
+
+    expect(matchOpenRouterModel('deepseek-flash', index)?.id).toBe(
+      'deepseek/deepseek-v4.1-flash'
+    )
+  })
+
   test('computes a positive discount when the local price is cheaper', () => {
     expect(computeDiscount(2, 2.5)).toBeCloseTo(0.2)
     expect(computeDiscount(3, 2.5)).toBeCloseTo(-0.2)

@@ -38,16 +38,26 @@ export function ModelDiscountBadge(props: ModelDiscountBadgeProps) {
   const percent = getReferenceDiscountPercent(props.model.discount_input)
   if (percent == null) return null
 
+  const cheaper = percent >= 0
   return (
     <span
-      title={t('Cheaper than the OpenRouter reference price')}
+      title={t('Compared to the OpenRouter reference price')}
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-md border border-green-600/30 bg-green-600/10 px-1.5 py-0.5 text-[11px] font-medium text-green-600 tabular-nums',
+        'inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
+        cheaper
+          ? 'border-green-600/30 bg-green-600/10 text-green-600'
+          : 'border-red-600/30 bg-red-600/10 text-red-600',
         props.className
       )}
     >
-      <ArrowDown className='size-3' aria-hidden='true' />
-      {percent}% {t('vs OpenRouter')}
+      {cheaper ? (
+        <>
+          <ArrowDown className='size-3' aria-hidden='true' />
+          {percent}% {t('discount')}
+        </>
+      ) : (
+        <>+{Math.abs(percent)}%</>
+      )}
     </span>
   )
 }

@@ -23,17 +23,16 @@ import { describe, test } from 'vitest'
 import { getReferenceDiscountPercent } from '../lib/price'
 
 describe('reference discount badge', () => {
-  test('rounds a positive discount to a whole percent', () => {
+  test('rounds a discount to a whole percent', () => {
     assert.equal(getReferenceDiscountPercent(0.2), 20)
     assert.equal(getReferenceDiscountPercent(0.205), 21)
+    assert.equal(getReferenceDiscountPercent(0), 0)
+    assert.equal(getReferenceDiscountPercent(-0.1), -10)
   })
 
-  test('hides missing, negligible, or non-positive discounts', () => {
+  test('returns null when there is no reference price', () => {
     assert.equal(getReferenceDiscountPercent(null), null)
     assert.equal(getReferenceDiscountPercent(undefined), null)
-    assert.equal(getReferenceDiscountPercent(0), null)
-    assert.equal(getReferenceDiscountPercent(-0.1), null)
-    assert.equal(getReferenceDiscountPercent(0.004), null)
     assert.equal(getReferenceDiscountPercent(Number.NaN), null)
   })
 })

@@ -121,7 +121,10 @@ const BILLING_SECTIONS = [
     id: 'model-price-sync',
     titleKey: 'Model Price Sync',
     build: (settings: BillingSettings) => (
-      <ModelPriceSyncSection modelDefaults={getModelDefaults(settings)} />
+      <ModelPriceSyncSection
+        openRouterMapping={settings.OpenRouterModelMapping}
+        modelDefaults={getModelDefaults(settings)}
+      />
     ),
   },
   {

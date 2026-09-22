@@ -43,12 +43,15 @@ import {
   buildLocalModelPrices,
   buildModelPriceSyncRows,
   parseJSONNumberRecord,
+  parseStringRecord,
   roundRatio,
   usdPer1MToRatio,
   type ModelPriceSyncRow,
 } from './model-price-sync-helpers'
+import { OpenRouterMappingEditor } from './openrouter-mapping-editor'
 
 type ModelPriceSyncSectionProps = {
+  openRouterMapping: string
   modelDefaults: {
     ModelPrice: string
     ModelRatio: string
@@ -98,13 +101,14 @@ function DiscountCell({ value }: { value: number | null }) {
 }
 
 export function ModelPriceSyncSection({
+  openRouterMapping,
   modelDefaults,
 }: ModelPriceSyncSectionProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [markup, setMarkup] = useState(100)
+  const [discountPercent, setDiscountPercent] = useState(0)
   const [page, setPage] = useState(0)
   const pageSize = 50
 
@@ -153,7 +157,8 @@ export function ModelPriceSyncSection({
           createCacheRatio: parseJSONNumberRecord(createCacheRatio),
         }),
         referenceModels,
-        quotaPerUnit
+        quotaPerUnit,
+        parseStringRecord(openRouterMapping)
       ),
     [
       modelPrice,
@@ -163,6 +168,7 @@ export function ModelPriceSyncSection({
       createCacheRatio,
       referenceModels,
       quotaPerUnit,
+      openRouterMapping,
     ]
   )
 
@@ -198,7 +204,7 @@ export function ModelPriceSyncSection({
       const nextCompletionRatio = parseJSONNumberRecord(completionRatio)
       const nextCacheRatio = parseJSONNumberRecord(cacheRatio)
       const nextCreateCacheRatio = parseJSONNumberRecord(createCacheRatio)
-      const factor = markup / 100
+      const factor = 1 - discountPercent / 100
       let applied = 0
 
       for (const row of targets) {
@@ -310,7 +316,7 @@ export function ModelPriceSyncSection({
         </TableCell>
         <TableCell>
           <Badge variant='outline'>
-            {row.mode === 'fixed' ? t('Fixed price') : t('Token ratio')}
+            {row.mode === 'fixed' ? t('Fixed price') : t('Token-based')}
           </Badge>
         </TableCell>
         <TableCell className='text-right tabular-nums'>
@@ -402,19 +408,22 @@ export function ModelPriceSyncSection({
           </div>
           <div className='flex items-center gap-2'>
             <label
-              htmlFor='model-price-sync-markup'
+              htmlFor='model-price-sync-discount'
               className='text-muted-foreground text-sm whitespace-nowrap'
             >
-              {t('Markup vs reference (%)')}
+              {t('Discount vs reference (%)')}
             </label>
             <Input
-              id='model-price-sync-markup'
+              id='model-price-sync-discount'
               type='number'
               min={0}
-              value={markup}
+              max={100}
+              value={discountPercent}
               onChange={(event) => {
                 const value = Number(event.target.value)
-                if (Number.isFinite(value) && value >= 0) setMarkup(value)
+                if (Number.isFinite(value) && value >= 0 && value <= 100) {
+                  setDiscountPercent(value)
+                }
               }}
               className='w-24'
             />
@@ -472,6 +481,12 @@ export function ModelPriceSyncSection({
           </Button>
         </div>
       </div>
+
+      <OpenRouterMappingEditor
+        mapping={openRouterMapping}
+        localModels={rows.map((row) => row.name)}
+        catalog={referenceModels}
+      />
 
       {referenceError ? (
         <p className='text-destructive text-xs'>{referenceError}</p>
@@ -553,7 +568,7 @@ export function ModelPriceSyncSection({
           <Tag />
         </IconBadge>
         {t(
-          'Applying sets the model input and output token ratios from the OpenRouter reference, scaled by the markup. Fixed-price models are skipped.'
+          'Applying sets each model price from the OpenRouter reference minus the discount. Fixed-price models are skipped.'
         )}
       </div>
     </TitledCard>
