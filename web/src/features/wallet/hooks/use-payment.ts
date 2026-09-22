@@ -31,6 +31,7 @@ import {
   requestAirwallexPayment,
   isApiSuccess,
 } from '../api'
+import { PAYMENT_TYPES } from '../constants'
 import {
   isStripePayment,
   isWaffoPayment,
@@ -171,7 +172,10 @@ export function usePayment() {
           const responseData = response.data as
             | { pay_link?: unknown; qr_code?: unknown; trade_no?: unknown }
             | undefined
-          if (paymentType === 'airwallex_wechat') {
+          if (
+            paymentType === PAYMENT_TYPES.AIRWALLEX_WECHAT ||
+            paymentType === PAYMENT_TYPES.AIRWALLEX_ALIPAY
+          ) {
             if (!responseData?.qr_code) {
               toast.error(i18next.t('Payment request failed'))
               return false

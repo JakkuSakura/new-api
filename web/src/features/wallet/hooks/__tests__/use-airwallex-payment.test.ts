@@ -39,7 +39,7 @@ vi.mock('@/features/wallet/api', async (importOriginal) => {
 })
 
 const { requestAirwallexPayment } = await import('@/features/wallet/api')
-const { usePayment } = await import('../use-payment')
+const { usePayment, requestPaymentAmount } = await import('../use-payment')
 
 describe('Airwallex payment dispatch', () => {
   beforeEach(() => {
@@ -79,6 +79,55 @@ describe('Airwallex payment dispatch', () => {
 
     expect(result.current.qrCode).toBe('weixin://wxpay/bizpayurl?pr=abc')
     expect(result.current.paymentTradeNo).toBe('AWX1')
+  })
+
+  test('exposes the QR code and trade number for Alipay', async () => {
+    vi.mocked(requestAirwallexPayment).mockResolvedValue({
+      message: 'success',
+      data: {
+        qr_code: 'https://qr.alipay.com/bavh4wjlxf12tper3a',
+        trade_no: 'AWX2',
+      },
+    })
+
+    const { result } = renderHook(() => usePayment())
+    await act(async () => {
+      await result.current.processPayment(100, 'airwallex_alipay')
+    })
+
+    expect(result.current.qrCode).toBe(
+      'https://qr.alipay.com/bavh4wjlxf12tper3a'
+    )
+    expect(result.current.paymentTradeNo).toBe('AWX2')
+  })
+
+  test('routes Alipay QR amount calculation through the Airwallex calculator', async () => {
+    const calls: string[] = []
+    const amount = await requestPaymentAmount(120, 'airwallex_alipay', {
+      regular: async () => {
+        calls.push('regular')
+        return { success: true, data: '1' }
+      },
+      stripe: async () => {
+        calls.push('stripe')
+        return { success: true, data: '2' }
+      },
+      waffo: async () => {
+        calls.push('waffo')
+        return { success: true, data: '3' }
+      },
+      waffoPancake: async () => {
+        calls.push('pancake')
+        return { success: true, data: '4' }
+      },
+      airwallex: async (request) => {
+        calls.push(`airwallex:${request.amount}`)
+        return { success: true, data: '5' }
+      },
+    })
+
+    expect(amount).toBe(5)
+    expect(calls).toEqual(['airwallex:120'])
   })
 
   test('surfaces the backend error message instead of the literal "error"', async () => {

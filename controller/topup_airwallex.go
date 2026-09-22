@@ -171,7 +171,7 @@ func RequestAirwallexPay(c *gin.Context) {
 		return
 	}
 	var req AirwallexPayRequest
-	if c.ShouldBindJSON(&req) != nil || (req.PaymentMethod != model.PaymentMethodAirwallex && req.PaymentMethod != model.PaymentMethodAirwallexWeChat) {
+	if c.ShouldBindJSON(&req) != nil || (req.PaymentMethod != model.PaymentMethodAirwallex && req.PaymentMethod != model.PaymentMethodAirwallexWeChat && req.PaymentMethod != model.PaymentMethodAirwallexAlipay) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
 		return
 	}
@@ -192,7 +192,8 @@ func RequestAirwallexPay(c *gin.Context) {
 		currency = "USD"
 	}
 	var result map[string]any
-	if req.PaymentMethod == model.PaymentMethodAirwallex {
+	switch req.PaymentMethod {
+	case model.PaymentMethodAirwallex:
 		result, err = airwallexRequest("/api/v1/pa/payment_links/create", map[string]any{
 			"amount":    money,
 			"currency":  currency,
@@ -201,7 +202,19 @@ func RequestAirwallexPay(c *gin.Context) {
 			"reference": tradeNo,
 			"metadata":  map[string]any{"trade_no": tradeNo},
 		})
-	} else {
+	case model.PaymentMethodAirwallexAlipay:
+		intent, createErr := airwallexRequest("/api/v1/pa/payment_intents/create", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency})
+		if createErr != nil {
+			err = createErr
+			break
+		}
+		intentID, _ := intent["id"].(string)
+		if intentID == "" {
+			err = fmt.Errorf("airwallex did not return a payment intent id")
+			break
+		}
+		result, err = airwallexRequest("/api/v1/pa/payment_intents/"+url.PathEscape(intentID)+"/confirm", map[string]any{"request_id": tradeNo + "c", "payment_method": map[string]any{"type": "alipaycn", "alipaycn": map[string]any{"flow": "qrcode"}}})
+	default:
 		result, err = airwallexRequest("/api/v1/pa/payment_intents/create", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "payment_method": map[string]any{"type": "wechatpay", "wechatpay": map[string]any{"flow": "qrcode"}}})
 	}
 	if err != nil {
@@ -236,7 +249,7 @@ func RequestAirwallexPay(c *gin.Context) {
 			}
 		}
 		if data["qr_code"] == nil {
-			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Airwallex 未返回微信支付二维码"})
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Airwallex 未返回支付二维码"})
 			return
 		}
 	}

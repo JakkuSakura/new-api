@@ -37,6 +37,7 @@ const (
 	PaymentMethodWaffoPancake    = "waffo_pancake"
 	PaymentMethodAirwallex       = "airwallex"
 	PaymentMethodAirwallexWeChat = "airwallex_wechat"
+	PaymentMethodAirwallexAlipay = "airwallex_alipay"
 	PaymentMethodBalance         = "balance"
 )
 

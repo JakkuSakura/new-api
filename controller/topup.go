@@ -56,6 +56,7 @@ func GetTopUpInfo(c *gin.Context) {
 		payMethods = append(payMethods,
 			map[string]string{"name": "Airwallex", "type": model.PaymentMethodAirwallex, "color": "#1E40AF", "currency": setting.AirwallexCurrency, "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
 			map[string]string{"name": "Airwallex WeChat Pay", "type": model.PaymentMethodAirwallexWeChat, "color": "#07C160", "currency": setting.AirwallexCurrency, "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
+			map[string]string{"name": "Airwallex Alipay", "type": model.PaymentMethodAirwallexAlipay, "color": "#1677FF", "currency": setting.AirwallexCurrency, "min_topup": strconv.Itoa(setting.AirwallexMinTopUp)},
 		)
 	}
 

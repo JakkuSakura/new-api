@@ -92,7 +92,13 @@ export function isWaffoPayment(paymentType: string): boolean {
 export function isWaffoPancakePayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.WAFFO_PANCAKE
 }
-export function isAirwallexPayment(paymentType: string): boolean { return paymentType === 'airwallex' || paymentType === 'airwallex_wechat' }
+export function isAirwallexPayment(paymentType: string): boolean {
+  return (
+    paymentType === PAYMENT_TYPES.AIRWALLEX ||
+    paymentType === PAYMENT_TYPES.AIRWALLEX_WECHAT ||
+    paymentType === PAYMENT_TYPES.AIRWALLEX_ALIPAY
+  )
+}
 
 export interface PaymentProcessors {
   regular: (topupAmount: number, paymentType: string) => Promise<boolean>

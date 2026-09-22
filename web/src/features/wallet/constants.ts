@@ -38,6 +38,7 @@ export const PAYMENT_TYPES = {
   WAFFO_PANCAKE: 'waffo_pancake',
   AIRWALLEX: 'airwallex',
   AIRWALLEX_WECHAT: 'airwallex_wechat',
+  AIRWALLEX_ALIPAY: 'airwallex_alipay',
 } as const
 
 /**
@@ -57,6 +58,7 @@ export const PAYMENT_ICON_COLORS = {
   [PAYMENT_TYPES.WAFFO_PANCAKE]: '#F97316',
   [PAYMENT_TYPES.AIRWALLEX]: '#1E40AF',
   [PAYMENT_TYPES.AIRWALLEX_WECHAT]: '#07C160',
+  [PAYMENT_TYPES.AIRWALLEX_ALIPAY]: '#1677FF',
 } as const
 
 /**
