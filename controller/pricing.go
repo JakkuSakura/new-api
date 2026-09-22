@@ -64,9 +64,14 @@ func GetPricing(c *gin.Context) {
 		}
 	}
 
+	ensureOpenRouterReferenceRefresh()
+	enriched := make([]model.Pricing, len(pricing))
+	copy(enriched, pricing)
+	applyOpenRouterDiscounts(enriched)
+
 	c.JSON(200, gin.H{
 		"success":            true,
-		"data":               pricing,
+		"data":               enriched,
 		"vendors":            model.GetVendors(),
 		"group_ratio":        groupRatio,
 		"usable_group":       usableGroup,

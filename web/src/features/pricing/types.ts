@@ -76,6 +76,10 @@ export type PricingModel = {
   billing_usage_examples?: BillingUsageExample[]
   /** Pricing version returned by backend, useful for cache busting */
   pricing_version?: string
+  /** Relative saving vs the OpenRouter reference input price (1 = 100%) */
+  discount_input?: number | null
+  /** Relative saving vs the OpenRouter reference output price (1 = 100%) */
+  discount_output?: number | null
   /**
    * Optional model metadata fields reserved for backend-provided catalog data.
    * Keep them data-driven; do not synthesize display values on the client.

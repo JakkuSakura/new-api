@@ -40,6 +40,10 @@ type Pricing struct {
 	BillingUsageSchema     map[string]jsplugin.UsageFieldSchema `json:"billing_usage_schema,omitempty"`
 	BillingUsageExamples   []jsplugin.UsageExample              `json:"billing_usage_examples,omitempty"`
 	PricingVersion         string                               `json:"pricing_version,omitempty"`
+	// DiscountInput/DiscountOutput expose the relative saving against the
+	// OpenRouter reference price (1 = 100% cheaper). Display-only.
+	DiscountInput  *float64 `json:"discount_input,omitempty"`
+	DiscountOutput *float64 `json:"discount_output,omitempty"`
 }
 
 type PricingVendor struct {

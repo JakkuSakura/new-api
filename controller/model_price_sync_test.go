@@ -2,8 +2,11 @@ package controller
 
 import (
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/model"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,4 +41,34 @@ func TestBuildOpenRouterReferenceModels(t *testing.T) {
 	assert.Equal(t, 0.5, model.CacheRatio)
 	assert.Equal(t, 1.25, model.CreateCacheRatio)
 	assert.Equal(t, 128000, model.ContextLength)
+}
+
+func TestApplyOpenRouterDiscounts(t *testing.T) {
+	originalQuota := common.QuotaPerUnit
+	common.QuotaPerUnit = 500000
+	t.Cleanup(func() { common.QuotaPerUnit = originalQuota })
+
+	openRouterReferenceCache.mu.Lock()
+	openRouterReferenceCache.models = []dto.OpenRouterReferenceModel{
+		{ID: "openai/gpt-4o", PromptUSDPer1M: 2.5, CompletionUSDPer1M: 10},
+	}
+	openRouterReferenceCache.fetchedAt = time.Now().Unix()
+	openRouterReferenceCache.mu.Unlock()
+	t.Cleanup(func() {
+		openRouterReferenceCache.mu.Lock()
+		openRouterReferenceCache.models = nil
+		openRouterReferenceCache.mu.Unlock()
+	})
+
+	pricing := []model.Pricing{
+		{ModelName: "gpt-4o", ModelRatio: 1, CompletionRatio: 4},
+		{ModelName: "gpt-4o", QuotaType: 1, ModelPrice: 1},
+	}
+	applyOpenRouterDiscounts(pricing)
+
+	require.NotNil(t, pricing[0].DiscountInput)
+	assert.InDelta(t, 0.2, *pricing[0].DiscountInput, 1e-9)
+	require.NotNil(t, pricing[0].DiscountOutput)
+	assert.InDelta(t, 0.2, *pricing[0].DiscountOutput, 1e-9)
+	assert.Nil(t, pricing[1].DiscountInput)
 }

@@ -44,6 +44,7 @@ import {
 } from '../lib/price'
 import type { PricingModel, TokenUnit } from '../types'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
+import { ModelDiscountBadge } from './model-discount-badge'
 
 // ----------------------------------------------------------------------------
 // Pricing Table Columns
@@ -230,6 +231,7 @@ export function usePricingColumns(
               <div className='text-muted-foreground/50 text-[10px]'>
                 / {tokenUnitLabel} tokens
               </div>
+              <ModelDiscountBadge model={model} className='mt-1' />
             </div>
           )
         }

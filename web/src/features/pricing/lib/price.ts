@@ -270,3 +270,16 @@ export function formatRequestPrice(
     abbreviate: false,
   })
 }
+
+/**
+ * Relative discount (whole percent) against the OpenRouter reference price.
+ * Returns null when there is no meaningful discount to display.
+ */
+export function getReferenceDiscountPercent(
+  discount: number | null | undefined
+): number | null {
+  if (discount == null || !Number.isFinite(discount) || discount <= 0.005) {
+    return null
+  }
+  return Math.round(discount * 100)
+}

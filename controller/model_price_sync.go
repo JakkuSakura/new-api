@@ -13,6 +13,8 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,9 +27,10 @@ const (
 )
 
 type openRouterReferenceCacheState struct {
-	mu        sync.Mutex
-	models    []dto.OpenRouterReferenceModel
-	fetchedAt int64
+	mu         sync.Mutex
+	models     []dto.OpenRouterReferenceModel
+	fetchedAt  int64
+	refreshing bool
 }
 
 var openRouterReferenceCache openRouterReferenceCacheState
@@ -83,6 +86,124 @@ func loadOpenRouterReferencePrices(force bool) ([]dto.OpenRouterReferenceModel, 
 	openRouterReferenceCache.models = models
 	openRouterReferenceCache.fetchedAt = now
 	return models, now, nil
+}
+
+// getCachedOpenRouterReferenceModels returns a snapshot of the cached reference
+// prices without triggering a network fetch. Safe on the public pricing path.
+func getCachedOpenRouterReferenceModels() []dto.OpenRouterReferenceModel {
+	openRouterReferenceCache.mu.Lock()
+	defer openRouterReferenceCache.mu.Unlock()
+	if len(openRouterReferenceCache.models) == 0 {
+		return nil
+	}
+	out := make([]dto.OpenRouterReferenceModel, len(openRouterReferenceCache.models))
+	copy(out, openRouterReferenceCache.models)
+	return out
+}
+
+// ensureOpenRouterReferenceRefresh warms the reference cache in the background
+// when it is empty or stale, so public pricing never blocks on OpenRouter.
+func ensureOpenRouterReferenceRefresh() {
+	openRouterReferenceCache.mu.Lock()
+	if openRouterReferenceCache.refreshing {
+		openRouterReferenceCache.mu.Unlock()
+		return
+	}
+	if len(openRouterReferenceCache.models) > 0 &&
+		time.Now().Unix()-openRouterReferenceCache.fetchedAt < int64(openRouterReferenceCacheTTL.Seconds()) {
+		openRouterReferenceCache.mu.Unlock()
+		return
+	}
+	openRouterReferenceCache.refreshing = true
+	openRouterReferenceCache.mu.Unlock()
+
+	go func() {
+		defer func() {
+			openRouterReferenceCache.mu.Lock()
+			openRouterReferenceCache.refreshing = false
+			openRouterReferenceCache.mu.Unlock()
+		}()
+		if _, _, err := loadOpenRouterReferencePrices(true); err != nil {
+			logger.LogError(nil, "OpenRouter 参考价格后台刷新失败 error="+err.Error())
+		}
+	}()
+}
+
+type openRouterReferenceIndex struct {
+	fullID map[string]dto.OpenRouterReferenceModel
+	suffix map[string]dto.OpenRouterReferenceModel
+}
+
+func buildOpenRouterReferenceIndex(models []dto.OpenRouterReferenceModel) openRouterReferenceIndex {
+	index := openRouterReferenceIndex{
+		fullID: make(map[string]dto.OpenRouterReferenceModel, len(models)),
+		suffix: make(map[string]dto.OpenRouterReferenceModel, len(models)),
+	}
+	for _, model := range models {
+		id := strings.ToLower(strings.TrimSpace(model.ID))
+		if id == "" {
+			continue
+		}
+		if _, ok := index.fullID[id]; !ok {
+			index.fullID[id] = model
+		}
+		suffix := id
+		if i := strings.LastIndex(id, "/"); i >= 0 {
+			suffix = id[i+1:]
+		}
+		if suffix == "" {
+			continue
+		}
+		if _, ok := index.suffix[suffix]; !ok {
+			index.suffix[suffix] = model
+		}
+	}
+	return index
+}
+
+func (index openRouterReferenceIndex) match(name string) (dto.OpenRouterReferenceModel, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	if normalized == "" {
+		return dto.OpenRouterReferenceModel{}, false
+	}
+	if model, ok := index.fullID[normalized]; ok {
+		return model, true
+	}
+	suffix := normalized
+	if i := strings.LastIndex(normalized, "/"); i >= 0 {
+		suffix = normalized[i+1:]
+	}
+	model, ok := index.suffix[suffix]
+	return model, ok
+}
+
+// applyOpenRouterDiscounts annotates token-ratio models with the relative
+// saving against the OpenRouter reference price. Fixed-price and tiered
+// expression models are not comparable and are skipped.
+func applyOpenRouterDiscounts(pricing []model.Pricing) {
+	models := getCachedOpenRouterReferenceModels()
+	if len(models) == 0 || common.QuotaPerUnit <= 0 {
+		return
+	}
+	index := buildOpenRouterReferenceIndex(models)
+	for i := range pricing {
+		item := &pricing[i]
+		if item.QuotaType != 0 || item.BillingMode == billing_setting.BillingModeTieredExpr {
+			continue
+		}
+		reference, ok := index.match(item.ModelName)
+		if !ok || reference.PromptUSDPer1M <= 0 {
+			continue
+		}
+		inputUSD := item.ModelRatio * 1_000_000 / common.QuotaPerUnit
+		discountInput := 1 - inputUSD/reference.PromptUSDPer1M
+		item.DiscountInput = &discountInput
+		if reference.CompletionUSDPer1M > 0 {
+			outputUSD := inputUSD * item.CompletionRatio
+			discountOutput := 1 - outputUSD/reference.CompletionUSDPer1M
+			item.DiscountOutput = &discountOutput
+		}
+	}
 }
 
 func fetchOpenRouterReferencePrices() ([]dto.OpenRouterReferenceModel, error) {

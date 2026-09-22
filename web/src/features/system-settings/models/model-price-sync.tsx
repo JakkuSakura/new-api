@@ -105,6 +105,8 @@ export function ModelPriceSyncSection({
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [markup, setMarkup] = useState(100)
+  const [page, setPage] = useState(0)
+  const pageSize = 50
 
   const modelPrice = modelDefaults.ModelPrice
   const modelRatio = modelDefaults.ModelRatio
@@ -174,9 +176,20 @@ export function ModelPriceSyncSection({
     () => filteredRows.filter((row) => row.reference && row.mode === 'ratio'),
     [filteredRows]
   )
+  const allMatchedRows = useMemo(
+    () => rows.filter((row) => row.reference && row.mode === 'ratio'),
+    [rows]
+  )
   const selectedRows = useMemo(
     () => rows.filter((row) => selected.has(row.name)),
     [rows, selected]
+  )
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize))
+  const currentPage = Math.min(page, pageCount - 1)
+  const pagedRows = useMemo(
+    () =>
+      filteredRows.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
+    [filteredRows, currentPage]
   )
 
   const applyMutation = useMutation({
@@ -252,6 +265,11 @@ export function ModelPriceSyncSection({
     setSelected(new Set(matchedRows.map((row) => row.name)))
   }
 
+  const alignAllMatched = () => {
+    setSelected(new Set(allMatchedRows.map((row) => row.name)))
+    applyMutation.mutate(allMatchedRows)
+  }
+
   const allMatchedSelected =
     matchedRows.length > 0 && matchedRows.every((row) => selected.has(row.name))
 
@@ -264,7 +282,7 @@ export function ModelPriceSyncSection({
     referenceError = (referenceQuery.error as Error).message
   }
 
-  const modelRows = filteredRows.map((row) => {
+  const modelRows = pagedRows.map((row) => {
     const selectable = Boolean(row.reference) && row.mode === 'ratio'
     return (
       <TableRow key={row.name}>
@@ -374,7 +392,10 @@ export function ModelPriceSyncSection({
             <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setPage(0)
+              }}
               placeholder={t('Search model name...')}
               className='ps-8'
             />
@@ -416,6 +437,14 @@ export function ModelPriceSyncSection({
             disabled={selected.size === 0}
           >
             {t('Clear')}
+          </Button>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={alignAllMatched}
+            disabled={allMatchedRows.length === 0 || applyMutation.isPending}
+          >
+            {t('Align all matched')}
           </Button>
           <div className='text-muted-foreground ml-auto text-xs'>
             {t('{{selected}} selected, {{matched}} matched', {
@@ -489,6 +518,35 @@ export function ModelPriceSyncSection({
           <TableBody>{tableContent}</TableBody>
         </Table>
       </div>
+
+      {pageCount > 1 ? (
+        <div className='flex items-center justify-between gap-2 text-xs'>
+          <span className='text-muted-foreground'>
+            {t('Page {{page}} of {{total}}', {
+              page: currentPage + 1,
+              total: pageCount,
+            })}
+          </span>
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              {t('Previous')}
+            </Button>
+            <Button
+              variant='outline'
+              size='sm'
+              disabled={currentPage >= pageCount - 1}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              {t('Next')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className='text-muted-foreground flex items-center gap-2 text-xs'>
         <IconBadge tone='info' size='xs'>
