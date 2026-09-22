@@ -38,7 +38,13 @@ import {
   isAirwallexPayment,
   submitPaymentForm,
 } from '../lib'
-import type { AmountRequest, AmountResponse } from '../types'
+import type {
+  AmountRequest,
+  AmountResponse,
+  AirwallexPaymentResponse,
+  PaymentResponse,
+  StripePaymentResponse,
+} from '../types'
 
 // ============================================================================
 // Payment Hook
@@ -124,20 +130,33 @@ export function usePayment() {
         const isAirwallex = isAirwallexPayment(paymentType)
         const amount = Math.floor(topupAmount)
 
-        const response = isStripe
-          ? await requestStripePayment({
-              amount,
-              payment_method: 'stripe',
-            })
-          : isAirwallex
-            ? await requestAirwallexPayment({ amount, payment_method: paymentType })
-            : await requestPayment({
-              amount,
-              payment_method: paymentType,
-            })
+        let response:
+          | PaymentResponse
+          | StripePaymentResponse
+          | AirwallexPaymentResponse
+        if (isStripe) {
+          response = await requestStripePayment({
+            amount,
+            payment_method: 'stripe',
+          })
+        } else if (isAirwallex) {
+          response = await requestAirwallexPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        } else {
+          response = await requestPayment({
+            amount,
+            payment_method: paymentType,
+          })
+        }
 
         if (!isApiSuccess(response)) {
-          toast.error(response.message || i18next.t('Payment request failed'))
+          const errorData =
+            typeof response.data === 'string' ? response.data : ''
+          toast.error(
+            errorData || response.message || i18next.t('Payment request failed')
+          )
           return false
         }
 
@@ -148,15 +167,33 @@ export function usePayment() {
           return true
         }
 
-        const responseData = response.data as { qr_code?: unknown; trade_no?: unknown } | undefined
-        if (isAirwallex && paymentType === 'airwallex_wechat' && responseData?.qr_code) {
-          setQrCode(String(responseData.qr_code))
-          setPaymentTradeNo(responseData.trade_no ? String(responseData.trade_no) : null)
-          toast.success(i18next.t('Scan the QR code to complete payment'))
-          return true
+        if (isAirwallex) {
+          const responseData = response.data as
+            | { pay_link?: unknown; qr_code?: unknown; trade_no?: unknown }
+            | undefined
+          if (paymentType === 'airwallex_wechat') {
+            if (!responseData?.qr_code) {
+              toast.error(i18next.t('Payment request failed'))
+              return false
+            }
+            setQrCode(String(responseData.qr_code))
+            setPaymentTradeNo(
+              responseData.trade_no ? String(responseData.trade_no) : null
+            )
+            toast.success(i18next.t('Scan the QR code to complete payment'))
+            return true
+          }
+          if (responseData?.pay_link) {
+            window.open(String(responseData.pay_link), '_blank')
+            toast.success(i18next.t('Redirecting to payment page...'))
+            return true
+          }
+          toast.error(i18next.t('Payment request failed'))
+          return false
         }
+
         // Handle non-Stripe payment
-        if (!isStripe && !isAirwallex && response.data) {
+        if (response.data) {
           const url = (response as unknown as { url?: string }).url
           if (url) {
             submitPaymentForm(url, response.data)

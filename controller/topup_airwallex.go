@@ -141,7 +141,11 @@ func airwallexPayMoney(amount int64, group string) float64 {
 	if ratio == 0 {
 		ratio = 1
 	}
-	return decimal.NewFromInt(amount).Mul(decimal.NewFromFloat(setting.AirwallexUnitPrice)).Mul(decimal.NewFromFloat(ratio)).InexactFloat64()
+	return decimal.NewFromInt(amount).
+		Mul(decimal.NewFromFloat(setting.AirwallexUnitPrice)).
+		Mul(decimal.NewFromFloat(ratio)).
+		Round(2).
+		InexactFloat64()
 }
 func RequestAirwallexAmount(c *gin.Context) {
 	var req AirwallexPayRequest
@@ -189,7 +193,14 @@ func RequestAirwallexPay(c *gin.Context) {
 	}
 	var result map[string]any
 	if req.PaymentMethod == model.PaymentMethodAirwallex {
-		result, err = airwallexRequest("/api/v1/pa/payment_links/create", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "success_redirect_url": paymentReturnPath("/wallet"), "failure_redirect_url": paymentReturnPath("/wallet")})
+		result, err = airwallexRequest("/api/v1/pa/payment_links/create", map[string]any{
+			"amount":    money,
+			"currency":  currency,
+			"reusable":  false,
+			"title":     common.SystemName,
+			"reference": tradeNo,
+			"metadata":  map[string]any{"trade_no": tradeNo},
+		})
 	} else {
 		result, err = airwallexRequest("/api/v1/pa/payment_intents/create", map[string]any{"request_id": tradeNo, "merchant_order_id": tradeNo, "amount": money, "currency": currency, "payment_method": map[string]any{"type": "wechatpay", "wechatpay": map[string]any{"flow": "qrcode"}}})
 	}
@@ -254,7 +265,7 @@ func GetAirwallexPaymentStatus(c *gin.Context) {
 	} else if age <= 60*60 {
 		pollInterval = 60
 	}
-	status, err := fetchAirwallexPaymentStatus(tradeNo)
+	status, err := fetchAirwallexPaymentStatus(tradeNo, topUp.CreateTime, topUp.PaymentMethod)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Airwallex 查询支付状态失败 trade_no=%s error=%q", tradeNo, err.Error()))
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "查询支付状态失败"})
@@ -270,7 +281,7 @@ func GetAirwallexPaymentStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": status, "poll_interval_seconds": pollInterval}})
 }
 
-func fetchAirwallexPaymentStatus(tradeNo string) (string, error) {
+func fetchAirwallexPaymentStatus(tradeNo string, createdAfter int64, paymentMethod string) (string, error) {
 	result, err := airwallexGet("/api/v1/pa/payment_intents", url.Values{"merchant_order_id": []string{tradeNo}})
 	if err != nil {
 		return "pending", err
@@ -286,6 +297,43 @@ func fetchAirwallexPaymentStatus(tradeNo string) (string, error) {
 	} else if item, ok := result["data"].(map[string]any); ok {
 		return airwallexPaymentStatus(item["status"]), nil
 	}
+	if paymentMethod == model.PaymentMethodAirwallex {
+		return fetchAirwallexPaymentLinkStatus(tradeNo, createdAfter)
+	}
+	return "pending", nil
+}
+
+func fetchAirwallexPaymentLinkStatus(tradeNo string, createdAfter int64) (string, error) {
+	query := url.Values{}
+	query.Set("page_size", "100")
+	if createdAfter > 0 {
+		query.Set("from_created_at", time.Unix(createdAfter, 0).UTC().Format(time.RFC3339))
+	}
+	for page := 0; page < 5; page++ {
+		query.Set("page_num", strconv.Itoa(page))
+		result, err := airwallexGet("/api/v1/pa/payment_links", query)
+		if err != nil {
+			return "pending", err
+		}
+		items, _ := result["items"].([]any)
+		for _, item := range items {
+			link, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			if reference, _ := link["reference"].(string); reference != tradeNo {
+				continue
+			}
+			if strings.EqualFold(fmt.Sprint(link["status"]), "PAID") {
+				return "succeeded", nil
+			}
+			return "pending", nil
+		}
+		hasMore, _ := result["has_more"].(bool)
+		if !hasMore || len(items) == 0 {
+			break
+		}
+	}
 	return "pending", nil
 }
 
@@ -299,7 +347,7 @@ func reconcileAirwallexTopUps(createdAfter int64, createdBefore int64) {
 		return
 	}
 	for _, topUp := range topUps {
-		status, err := fetchAirwallexPaymentStatus(topUp.TradeNo)
+		status, err := fetchAirwallexPaymentStatus(topUp.TradeNo, topUp.CreateTime, topUp.PaymentMethod)
 		if err != nil {
 			logger.LogError(nil, fmt.Sprintf("Airwallex 查询支付状态失败 trade_no=%s error=%q", topUp.TradeNo, err.Error()))
 			continue
@@ -373,6 +421,7 @@ func AirwallexWebhook(c *gin.Context) {
 		Data      struct {
 			Object struct {
 				MerchantOrderID string `json:"merchant_order_id"`
+				Reference       string `json:"reference"`
 				Status          string `json:"status"`
 			} `json:"object"`
 		} `json:"data"`
@@ -389,11 +438,15 @@ func AirwallexWebhook(c *gin.Context) {
 		c.Status(http.StatusOK)
 		return
 	}
-	if event.Data.Object.Status != "" && event.Data.Object.Status != "SUCCEEDED" && event.Data.Object.Status != "paid" {
+	if status := strings.ToUpper(strings.TrimSpace(event.Data.Object.Status)); status != "" && status != "SUCCEEDED" && status != "PAID" {
 		c.Status(http.StatusOK)
 		return
 	}
-	if err := model.RechargeAirwallex(event.Data.Object.MerchantOrderID, c.ClientIP()); err != nil {
+	tradeNo := event.Data.Object.MerchantOrderID
+	if tradeNo == "" {
+		tradeNo = event.Data.Object.Reference
+	}
+	if err := model.RechargeAirwallex(tradeNo, c.ClientIP()); err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
