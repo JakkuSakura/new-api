@@ -8,11 +8,13 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/middleware"
+	"github.com/QuantumNous/new-api/pkg/metrics"
 
 	"github.com/gin-gonic/gin"
 )
 
 func SetRouter(router *gin.Engine, assets WebAssets) {
+	router.GET("/metrics", gin.WrapH(metrics.Handler()))
 	SetApiRouter(router)
 	SetDashboardRouter(router)
 	SetRelayRouter(router)
