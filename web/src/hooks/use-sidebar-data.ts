@@ -29,6 +29,7 @@ import {
   PlugZap,
   Radio,
   ServerCog,
+  SquareTerminal,
   Settings,
   Ticket,
   User,
@@ -85,6 +86,11 @@ export function useSidebarData(): SidebarData {
             title: t('API Keys'),
             url: '/keys',
             icon: Key,
+          },
+          {
+            title: t('Connect'),
+            url: '/connect',
+            icon: SquareTerminal,
           },
           {
             title: t('Usage Logs'),
